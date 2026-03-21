@@ -283,16 +283,36 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 ### GitHub Actions / buildx 报 `permission_denied: write_package`
 
-表示当前用于推送 GHCR 的 **`GITHUB_TOKEN` 没有写入 Packages 权限**，或组织策略禁止。按顺序检查：
+表示推送到 GHCR 时**没有「写入软件包」权限**。请按下表**从上到下**排查（任一步不对都会导致该错误）。
 
-1. **本仓库**：**Settings → Actions → General → Workflow permissions**  
-   - 必须选 **Read and write permissions**（不要选仅「只读仓库内容」）。  
-   - 保存后 **Re-run failed jobs** 重跑工作流。
-2. **组织仓库**：需 **组织管理员** 在 **Organization → Settings → Actions → General** 中允许工作流使用可写权限（不同组织菜单名称可能为 *Workflow permissions* / *GITHUB_TOKEN* 相关项）。
-3. **Fork 上开的 PR**：`GITHUB_TOKEN` 对上游仓库的 GHCR **无写权限**，应在**源仓库**上打 tag 推送，或改用 **PAT**（见下）。
-4. **仍失败时**：在仓库 **Secrets** 中新增 **`GHCR_TOKEN`**（Classic PAT，勾选 **`write:packages`**），并把工作流里登录步骤改为使用该 Secret（需改 `docker-publish.yml`）；或联系组织管理员放行 **Packages 写入**。
+#### A. 本仓库（必做）
 
-工作流文件已声明 `permissions: packages: write`；若组织强制 **只读**，仅改 YAML 不够，必须调组织/仓库设置或改用 PAT。
+1. 打开：**Settings → Actions → General**
+2. **Workflow permissions** 选 **Read and write permissions**（不要选 *Read repository contents and packages permissions* 等**只读**项）
+3. 点 **Save**
+4. 回到 **Actions**，对失败任务 **Re-run all jobs**
+
+#### B. 组织 `zhi-java`（仓库在组织下时，常是根因）
+
+需 **组织 Owner / 管理员** 操作：
+
+1. **Organization → Settings → Actions → General**
+2. **Workflow permissions** 选 **Read and write permissions**（若组织选成 **Read** 或未允许写入，仓库里怎么选都可能仍无法写 GHCR）
+3. 若有 **Allow GitHub Actions to create and approve pull requests** 等与 Actions 相关的限制，按团队策略放行（与推送镜像最直接相关的是 **Workflow permissions 可写**）
+
+#### C. 使用 PAT 绕过（A/B 仍无法改、或需立刻推送时）
+
+1. 个人账号：**Settings → Developer settings → Personal access tokens** → 新建 **Classic** token，勾选 **`write:packages`**（及 **`read:packages`**）
+2. 若组织启用了 **SAML SSO**：在令牌详情页对该 token 点 **Configure SSO** → **Authorize** 组织 `zhi-java`
+3. 在**本仓库**：**Settings → Secrets and variables → Actions → New repository secret**  
+   - Name：`GHCR_TOKEN`  
+   - Value：粘贴 `ghp_` 开头的令牌  
+4. 本仓库 **`docker-publish.yml` 已支持**：若存在 Secret **`GHCR_TOKEN`**，则用它登录 GHCR，而不再用 `GITHUB_TOKEN` 推送
+
+#### D. 其它说明
+
+- **Fork 的 PR**：`GITHUB_TOKEN` 不能往**上游**仓库的 GHCR 写；应在**源仓库**打 tag / 手动 Run workflow，或使用 PAT。
+- 工作流里已声明 `permissions: packages: write`；组织若**强制**工作流只读，必须走 **B** 或 **C**。
 
 ### 无法拉取 `maven:*` 基础镜像
 
