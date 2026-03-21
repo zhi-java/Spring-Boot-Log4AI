@@ -13,6 +13,7 @@
 - [运行模式：组件嵌入 vs 独立 JAR](#运行模式组件嵌入-vs-独立-jar)
 - [Docker 部署（standalone）](#docker-部署standalone)
 - [公共镜像库发布方案（文档）](docs/docker-registry-publish.md)
+- [技术架构与用户执行链路（文档）](docs/technical-architecture-user-flow.md)
 - [内置控制台与静态页](#内置控制台与静态页)
 - [生产环境：日志服务注册（可选）](#生产环境日志服务注册可选)
 - [HTTP 接口](#http-接口)
@@ -256,7 +257,7 @@ docker run --rm -p 8080:8080 \
 
 独立进程默认 **`user.dir`** 在镜像里为 **`/app`**，控制台写入的路径类配置可能落在 **`/app/.log4ai/`**。若希望容器重建后保留，请对该目录做 **volume 挂载**（见 `docker-compose.example.yml` 注释）。
 
-**Docker 下「保存日志/LLM 设置」返回 500**：常见原因是 **`/app/.log4ai` 不可写**（命名卷默认属主常为 root，而 JVM 以 uid **1000** 运行）。当前镜像通过 **`docker-entrypoint.sh`** 在启动前对该目录 **`chown log4ai`**；请使用**含该脚本的镜像**并 **`docker compose pull` 更新**。临时绕过：将卷改为宿主机目录，例如 `- ./log4ai-data:/app/.log4ai`，并执行 **`chown -R 1000:1000 log4ai-data`**。另请确认未开启 **`log4ai.registry.disable-ui-log-paths`**（开启后控制台不能改日志路径，仅能走注册接口）。
+**Docker 下「保存日志/LLM 设置」返回 500**：常见原因是 **`/app/.log4ai` 不可写**。当前镜像默认以 **root** 运行 JVM，一般可直接写命名卷；若你在 compose 中指定 **`user: "1000:1000"`** 降权，则需保证卷对 uid 1000 可写，或改用宿主机目录并 **`chown -R 1000:1000`**。另请确认未开启 **`log4ai.registry.disable-ui-log-paths`**（开启后控制台不能改日志路径，仅能走注册接口）。
 
 ---
 

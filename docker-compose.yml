@@ -5,9 +5,9 @@
 # 启动：docker compose pull && docker compose up -d
 # 可选：在 .env 中设置 LOG4AI_TAG=0.1.0 固定版本（默认 latest）；LOG4AI_PORT 改宿主机端口
 #
-# 控制台「保存日志服务」写 /app/.log4ai/settings.json：镜像需含 docker-entrypoint.sh（对挂载卷 chown）。
-# 若仍因卷权限失败，可改为宿主机目录并 chown 1000:1000：- ./log4ai-data:/app/.log4ai
-
+# 控制台设置写入 /app/.log4ai/settings.json；镜像默认 root 运行，一般可直接写命名卷。
+# 若需强制以 uid 1000 运行：user: "1000:1000"，并保证卷可写。
+#
 services:
   log4ai:
     image: ghcr.io/zhi-java/log4ai-server:${LOG4AI_TAG:-latest}
@@ -19,6 +19,9 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:?请在 .env 或环境中设置 LLM_API_KEY}
       LOGGING_FILE_NAME: /data/logs/application.log
     volumes:
+      # 默认仅挂 ./host-logs → 容器内 /data/logs。多服务注册时 logPath 须落在可访问路径下，例如：
+      # - ./host-logs/gd-oauth:/data/logs/gd-oauth:ro
+      # 并在控制台/注册接口中把该服务 logPath 设为 /data/logs/gd-oauth/application.log（或目录）
       - ./host-logs:/data/logs:ro
       - log4ai-settings:/app/.log4ai
 

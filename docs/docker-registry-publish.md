@@ -230,7 +230,7 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 - [ ] 镜像内**无** `LLM_API_KEY`、数据库密码等（仅用占位或运行时注入）。
 - [ ] `.dockerignore` 已排除 `target/`、`.git`，避免误拷构建产物与历史。
-- [ ] 使用**非 root** 用户运行（当前 `Dockerfile` 已 `USER log4ai`）。
+- [ ] 按需选择运行用户：默认镜像以 **root** 运行 JVM（便于读挂载日志）；若需降权可在 compose 中设 **`user: "1000:1000"`** 并配合宿主机目录权限。
 - [ ] 定期用 **`docker scout`** / Trivy 扫描基础镜像漏洞（可选）。
 - [ ] 公开镜像说明中写明：**软件许可证**、**数据与日志不落盘到镜像**、**用户自行承担 LLM 调用费用与合规**。
 

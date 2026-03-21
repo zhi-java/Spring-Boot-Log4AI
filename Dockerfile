@@ -2,21 +2,20 @@
 # Prerequisite: mvn -DskipTests package  (creates target/spring-boot-log4ai-*-standalone.jar)
 # Local:  mvn -DskipTests package && docker build -t your-tag .
 # CI:     GitHub Actions runs mvn package before docker build (see docker-publish.yml)
+#
+# 进程默认以 root 运行（见 docker-entrypoint.sh），便于挂载目录权限与业务日志属主不一致时的只读分析。
+# 若需非 root，可在 compose 中 user: "1000:1000" 并保证日志目录对 uid 1000 可读。
 
 FROM eclipse-temurin:17-jre-jammy
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gosu \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd -g 1000 log4ai \
-    && useradd -u 1000 -g log4ai -m -d /app log4ai
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY target/spring-boot-log4ai-*-standalone.jar /app/app.jar
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh \
-    && chown log4ai:log4ai /app/app.jar
+RUN chmod +x /docker-entrypoint.sh
 
-# 入口以 root 修正挂载卷权限后，gosu 降权为 log4ai 运行 JVM（见 docker-entrypoint.sh）
 USER root
 EXPOSE 8080
 
