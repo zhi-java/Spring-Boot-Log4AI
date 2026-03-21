@@ -235,7 +235,7 @@ docker run --rm -p 8080:8080 \
   log4ai-server:local
 ```
 
-或使用 Compose：仓库根目录已有 **`docker-compose.yml`**（可参考 **`docker-compose.example.yml`** 自行裁剪）；准备 **`host-logs`** 与 **`.env`**（见 **`.env.example`**）后执行 **`docker compose up --build -d`** 即可在本地构建镜像并启动（**不依赖** Docker Hub 上的预构建镜像）。
+或使用 Compose：根目录 **`docker-compose.yml`** 默认从 **GHCR** 拉取 **`ghcr.io/zhi-java/log4ai-server`**（准备 **`host-logs`** 与 **`.env`**，见 **`.env.example`**）后执行 **`docker compose pull && docker compose up -d`** 即可。**本地从源码构建镜像**时可用 **`docker-compose.example.yml`** 作为模板，先 **`mvn -DskipTests package`** 再 **`docker compose -f docker-compose.example.yml up --build -d`**。
 
 ### 未发布镜像仓库时怎么用？
 
@@ -243,7 +243,7 @@ docker run --rm -p 8080:8080 \
 
 | 方式 | 说明 |
 |------|------|
-| **本机构建** | 在装有 Docker 的机器上 **`git clone`**（或拷贝源码）后，在项目根目录执行 **`docker build -t log4ai-server:local .`** 或 **`docker compose up --build`**，镜像只在**本机**生成。 |
+| **本机构建** | 在装有 Docker 的机器上 **`git clone`**（或拷贝源码）后执行 **`mvn -DskipTests package`**，再 **`docker build -t log4ai-server:local .`** 或使用 **`docker-compose.example.yml`** 执行 **`docker compose -f docker-compose.example.yml up --build`**，镜像只在**本机**生成。 |
 | **不跑 Docker** | **`mvn -DskipTests package`**，用 **`target/spring-boot-log4ai-*-standalone.jar`** 执行 **`java -jar ...`**（见 [步骤 8](#步骤-8独立可执行-jar可选)），无需任何镜像库。 |
 | **业务工程依赖** | **`mvn install`** 后，在其它工程的 `pom.xml` 里依赖 **`com.log4ai:spring-boot-log4ai`**，同样**不需要**镜像。 |
 | **离线/内网搬运** | 在一台能构建的机器上 **`docker save log4ai-server:local -o log4ai.tar`**，到目标机 **`docker load -i log4ai.tar`**；或只拷贝 **standalone JAR** + 配置文件即可。 |
@@ -255,6 +255,8 @@ docker run --rm -p 8080:8080 \
 ### 控制台设置持久化（可选）
 
 独立进程默认 **`user.dir`** 在镜像里为 **`/app`**，控制台写入的路径类配置可能落在 **`/app/.log4ai/`**。若希望容器重建后保留，请对该目录做 **volume 挂载**（见 `docker-compose.example.yml` 注释）。
+
+**Docker 下「保存日志/LLM 设置」返回 500**：常见原因是 **`/app/.log4ai` 不可写**（命名卷默认属主常为 root，而 JVM 以 uid **1000** 运行）。当前镜像通过 **`docker-entrypoint.sh`** 在启动前对该目录 **`chown log4ai`**；请使用**含该脚本的镜像**并 **`docker compose pull` 更新**。临时绕过：将卷改为宿主机目录，例如 `- ./log4ai-data:/app/.log4ai`，并执行 **`chown -R 1000:1000 log4ai-data`**。另请确认未开启 **`log4ai.registry.disable-ui-log-paths`**（开启后控制台不能改日志路径，仅能走注册接口）。
 
 ---
 

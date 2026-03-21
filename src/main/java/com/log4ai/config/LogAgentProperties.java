@@ -267,7 +267,8 @@ public class LogAgentProperties {
     }
 
     public void setTimeout(Duration timeout) {
-      this.timeout = timeout;
+      // Spring 绑定 / 外部 yml 可能写入 null，避免下游 snapshot、LangChain4j 构建 NPE
+      this.timeout = timeout == null ? Duration.ofSeconds(120) : timeout;
     }
   }
 

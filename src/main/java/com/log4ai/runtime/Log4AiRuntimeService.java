@@ -87,7 +87,7 @@ public class Log4AiRuntimeService {
             llm.getBaseUrl(),
             llm.getModelName(),
             llm.getTemperature(),
-            (int) llm.getTimeout().toSeconds());
+            timeoutSecondsForView(llm));
     var sys = systemLogPaths.resolve(workspace);
     var reg = props.getRegistry();
     LogsSettingsView gv =
@@ -109,6 +109,16 @@ public class Log4AiRuntimeService {
             reg.isEnabled(),
             !reg.isDisableUiLogPaths());
     return new SettingsResponse(lv, gv);
+  }
+
+  /** 与 {@link Log4AiSettingsPersistence#fromProps} 一致，避免配置/持久化后出现 null 导致 NPE。 */
+  private static int timeoutSecondsForView(LogAgentProperties.Llm llm) {
+    var t = llm.getTimeout();
+    if (t == null) {
+      return 120;
+    }
+    long sec = t.toSeconds();
+    return (int) Math.min(Integer.MAX_VALUE, Math.max(1, sec));
   }
 
   public void applyLlm(LlmSettingsRequest req) throws IOException {

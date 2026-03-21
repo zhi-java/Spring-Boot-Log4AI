@@ -1,4 +1,5 @@
-# 复制为 docker-compose.yml 后按需修改。
+# 本地从源码构建镜像时使用（需先 mvn -DskipTests package）。
+# 生产环境请直接使用仓库根目录的 docker-compose.yml（从 GHCR 拉取，无需 build）。
 # 要点：把「要分析的日志」挂进容器，且路径与配置一致（见 README「Docker 部署」）。
 
 services:

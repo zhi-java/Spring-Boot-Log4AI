@@ -1,15 +1,22 @@
-# 使用：在项目根目录创建 .env（可复制 .env.example），写入 LLM_API_KEY=sk-...
-# 构建镜像前须先有 standalone JAR：mvn -DskipTests package
-# 或：$env:LLM_API_KEY='sk-...'; docker compose up --build
+# 生产环境：从 GHCR 拉取预构建镜像（无需本机 mvn / docker build）
+#
+# 前置：复制 .env.example 为 .env，填写 LLM_API_KEY；准备 host-logs 目录并放入/挂载待分析日志
+# 私有 GHCR 包：先执行 echo "$GITHUB_PAT" | docker login ghcr.io -u <用户> --password-stdin
+# 启动：docker compose pull && docker compose up -d
+# 可选：在 .env 中设置 LOG4AI_TAG=0.1.0 固定版本（默认 latest）；LOG4AI_PORT 改宿主机端口
+#
+# 控制台「保存日志服务」写 /app/.log4ai/settings.json：镜像需含 docker-entrypoint.sh（对挂载卷 chown）。
+# 若仍因卷权限失败，可改为宿主机目录并 chown 1000:1000：- ./log4ai-data:/app/.log4ai
 
 services:
   log4ai:
-    build: .
-    image: log4ai-server:local
+    image: ghcr.io/zhi-java/log4ai-server:${LOG4AI_TAG:-latest}
+    restart: unless-stopped
+    pull_policy: always
     ports:
-      - "8080:8080"
+      - "${LOG4AI_PORT:-8080}:8080"
     environment:
-      LLM_API_KEY: ${LLM_API_KEY:-LOCAL_PLACEHOLDER_SET_LLM_API_KEY}
+      LLM_API_KEY: ${LLM_API_KEY:?请在 .env 或环境中设置 LLM_API_KEY}
       LOGGING_FILE_NAME: /data/logs/application.log
     volumes:
       - ./host-logs:/data/logs:ro
