@@ -1,14 +1,7 @@
-# 独立可执行包：*-standalone.jar（Log4AiStandaloneApplication）
-# 日志分析依赖「容器内可见路径」：请用 volume 挂载宿主机日志目录，并与 logging.file / log4ai.logs 配置一致。
-#
-# 构建阶段与运行时使用 Debian/Ubuntu 系镜像（非 Alpine），在部分网络环境下拉取 manifest 比 alpine 更稳定。
-# 若仍无法访问 docker.io 或无法拉取 maven 镜像：本机 mvn package 后使用 Dockerfile.prebuilt（仅 JRE 层）。
-
-FROM maven:3.9-eclipse-temurin-17 AS build
-WORKDIR /src
-COPY pom.xml .
-COPY src ./src
-RUN mvn -q -DskipTests package
+# Runtime image: copies host-built *-standalone.jar (does NOT pull maven:* from Docker Hub).
+# Prerequisite: mvn -DskipTests package  (creates target/spring-boot-log4ai-*-standalone.jar)
+# Local:  mvn -DskipTests package && docker build -t your-tag .
+# CI:     GitHub Actions runs mvn package before docker build (see docker-publish.yml)
 
 FROM eclipse-temurin:17-jre-jammy
 RUN apt-get update \
@@ -18,7 +11,7 @@ RUN apt-get update \
     && useradd -u 1000 -g log4ai -m -d /app log4ai
 
 WORKDIR /app
-COPY --from=build /src/target/spring-boot-log4ai-*-standalone.jar /app/app.jar
+COPY target/spring-boot-log4ai-*-standalone.jar /app/app.jar
 
 USER log4ai:log4ai
 EXPOSE 8080

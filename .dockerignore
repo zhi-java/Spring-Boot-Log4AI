@@ -1,5 +1,4 @@
-# 默认多阶段 Dockerfile 不需要 target；若使用 Dockerfile.prebuilt，需把 standalone JAR 打进上下文
-# 故不再忽略整个 target/（仅忽略常见无关文件，减小体积）
+# Dockerfile 需 COPY target/*-standalone.jar；忽略 target 下编译中间目录以减小上下文
 target/classes/
 target/generated-sources/
 target/maven-archiver/

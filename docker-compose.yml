@@ -1,4 +1,5 @@
 # 使用：在项目根目录创建 .env（可复制 .env.example），写入 LLM_API_KEY=sk-...
+# 构建镜像前须先有 standalone JAR：mvn -DskipTests package
 # 或：$env:LLM_API_KEY='sk-...'; docker compose up --build
 
 services:

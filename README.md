@@ -213,7 +213,7 @@ java -jar target/spring-boot-log4ai-0.1.0-SNAPSHOT-standalone.jar
 
 ## Docker 部署（standalone）
 
-仓库根目录提供 **`Dockerfile`**（多阶段构建 `*-standalone.jar`）与 **`docker-compose.example.yml`** 示例。
+仓库根目录提供 **`Dockerfile`**（先 **`mvn package`** 再打镜像，仅拉 **JRE** 基础镜像）与 **`docker-compose.example.yml`** 示例。
 
 ### 还能正常分析日志吗？
 
@@ -416,7 +416,7 @@ sequenceDiagram
 
 详见 [docs/docker-registry-publish.md](docs/docker-registry-publish.md) 中的推送与公开包说明。
 
-**Windows CMD 一键脚本**：[`scripts/ghcr-build-push.bat`](scripts/ghcr-build-push.bat)（构建 + 登录 ghcr.io + 推送；需先 `set GITHUB_PAT=...` 或使用交互登录）。若构建报 **`failed size validation`**，先运行 [`scripts/docker-prune-build-cache.bat`](scripts/docker-prune-build-cache.bat)，或设 `set DOCKER_BUILD_NO_CACHE=1` 再构建。**若无法拉取 `maven:*` 镜像**，可本机 `mvn package` 后使用 [`Dockerfile.prebuilt`](Dockerfile.prebuilt)，或 `set DOCKER_USE_PREBUILT=1` 再运行 `ghcr-build-push.bat`。详见 [docs/docker-registry-publish.md](docs/docker-registry-publish.md)「常见问题」。**说明**：该 `.bat` 为 **纯英文/ASCII**，避免 CMD 在中文 Windows 下对 UTF-8 无 BOM 脚本的乱码解析；请在 **CMD** 中运行（若用 PowerShell 调用 `.bat` 仍走 CMD 解释器，一般可用）。
+**Windows CMD 一键脚本**：[`scripts/ghcr-build-push.bat`](scripts/ghcr-build-push.bat)（无 standalone JAR 时会先执行 **`mvn package`**，再 `docker build` / 登录 / 推送；**不再拉取** `maven:*` 镜像）。若构建报 **`failed size validation`**，先运行 [`scripts/docker-prune-build-cache.bat`](scripts/docker-prune-build-cache.bat)，或设 `set DOCKER_BUILD_NO_CACHE=1`。详见 [docs/docker-registry-publish.md](docs/docker-registry-publish.md)。**说明**：该 `.bat` 为 **纯英文/ASCII**；请在 **CMD** 中运行。
 
 ---
 
