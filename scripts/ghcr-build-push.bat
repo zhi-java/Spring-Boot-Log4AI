@@ -4,6 +4,10 @@ REM Run from CMD:  cd repo-root   then   scripts\ghcr-build-push.bat [version] [
 REM Or:  scripts\ghcr-build-push.bat 0.1.0 zhi-java
 REM Before push set:  set GITHUB_PAT=ghp_xxx   OR use interactive docker login when prompted.
 REM NOTE: File must be ASCII-only. CMD breaks UTF-8 without BOM on Chinese Windows.
+REM If build fails with "failed size validation" / "layer-sha256 ... failed precondition":
+REM   1) scripts\docker-prune-build-cache.bat
+REM   2) Optional: set DOCKER_BUILDKIT=0  (legacy builder)
+REM   3) Optional: set DOCKER_BUILD_NO_CACHE=1  (this script passes --no-cache to docker build)
 
 setlocal EnableExtensions
 cd /d "%~dp0.."
@@ -29,7 +33,9 @@ set "IMAGE=ghcr.io/%GH_USER%/log4ai-server:%VERSION%"
 echo.
 echo [1/3] docker build  %IMAGE%
 echo.
-docker build -t "%IMAGE%" .
+set "BUILD_EXTRA="
+if "%DOCKER_BUILD_NO_CACHE%"=="1" set "BUILD_EXTRA=--no-cache"
+docker build %BUILD_EXTRA% -t "%IMAGE%" .
 if errorlevel 1 (
   echo [ERR] docker build failed. Check Docker Hub access or use GitHub Actions to build.
   exit /b 1

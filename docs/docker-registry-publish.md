@@ -265,6 +265,22 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 本仓库 **`Dockerfile`** 已使用 **Debian/Ubuntu 系**基础镜像（`maven:3.9-eclipse-temurin-17`、`eclipse-temurin:17-jre-jammy`），避免部分环境下 **Alpine** manifest 异常。
 
+### `failed size validation` / `layer-sha256 ... failed precondition`（层大小校验失败）
+
+多为 **BuildKit 缓存或下载层损坏**（网络中断、磁盘异常等），与业务代码无关。按顺序尝试：
+
+1. **清理构建缓存**（推荐）：执行仓库内 **`scripts/docker-prune-build-cache.bat`**，或手动：  
+   `docker builder prune -f`
+2. **不使用缓存重建**：  
+   `set DOCKER_BUILD_NO_CACHE=1`（Windows CMD）后重新运行 **`scripts/ghcr-build-push.bat`**（脚本已支持传入 `--no-cache`）。
+3. **关闭 BuildKit 使用旧构建器**（部分环境可规避校验 Bug）：  
+   CMD：`set DOCKER_BUILDKIT=0`  
+   PowerShell：`$env:DOCKER_BUILDKIT="0"`  
+   然后再执行 `docker build`。
+4. 删除可能损坏的本地基础镜像后重拉：  
+   `docker rmi maven:3.9-eclipse-temurin-17`（若提示被占用可先停相关容器）→ `docker pull maven:3.9-eclipse-temurin-17`
+5. **重启 Docker Desktop**，仍失败则用 **GitHub Actions** 在云端构建（见 `docker-publish.yml`）。
+
 ### `docker login ghcr.io` 报 `denied`
 
 - **Classic PAT**：勾选 **`write:packages`**、**`read:packages`**（若需拉取私有包）；  
