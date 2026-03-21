@@ -1,0 +1,26 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+release.properties
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+
+# 本地密钥与环境（勿提交）
+.env
+.env.*
+!.env.example
+
+# 运行时控制台写入的本地设置（常含 API Key 与机器路径）
+.log4ai/
+
+# OS
+.DS_Store
+Thumbs.db

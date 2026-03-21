@@ -1,0 +1,39 @@
+# 仅在独立部署主类 Log4AiStandaloneApplication 中通过 spring.config.name 追加加载。
+# 生产环境请改用环境变量、命令行或外部 application.yml 覆盖。
+
+server:
+  port: 8080
+
+# 单实例时 Log4AI 读取的日志文件（与 Spring Boot 一致）；不配则默认可解析为 logs/spring.log
+# logging:
+#   file:
+#     name: logs/application.log
+
+log4ai:
+  llm:
+    # 请设置环境变量 LLM_API_KEY；占位仅便于本地未配置时启动（勿提交真实密钥）
+    api-key: ${LLM_API_KEY:LOCAL_PLACEHOLDER_SET_LLM_API_KEY}
+    base-url: https://jiuuij.de5.net/v1
+    model-name: gpt-5.4
+  # 须至少有一条嵌套属性，否则 YAML 中仅注释的 logs: 可能被解析异常导致绑定失败
+  logs:
+    default-service: default
+    # 多服务建议在控制台「日志服务」注册； yml 示例：
+    # services:
+    #   order-api:
+    #     display-name: 订单服务
+    #     log-path: /data/logs/order-api/application.log
+  web:
+    enabled: true
+    console-enabled: true
+  streaming:
+    enabled: true
+  # 日志服务注册中心模式（可选）：业务应用携带令牌调用 POST /log4ai/registry/register 上报路径，
+  # 避免在控制台暴露服务器任意路径。生产建议：LOG4AI_REGISTRY_SECRET + disable-ui-log-paths: true
+  # registry:
+  #   enabled: true
+  #   shared-secret: ${LOG4AI_REGISTRY_SECRET:}
+  #   allowed-path-prefixes:
+  #     - /var/log
+  #     - /data/logs
+  #   disable-ui-log-paths: true

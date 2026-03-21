@@ -1,0 +1,2 @@
+# 示例活动日志：将真实日志替换本文件或挂载整个目录。
+2026-01-01T12:00:00.000Z  INFO --- Log4AI docker sample: replace this file with real logs.

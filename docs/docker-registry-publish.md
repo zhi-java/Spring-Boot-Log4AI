@@ -1,0 +1,231 @@
+# 公共镜像仓库发布方案（Docker）
+
+本文说明如何将 **Log4AI standalone** 镜像构建并推送到**公共**容器镜像库（以 **Docker Hub**、**GitHub Container Registry (ghcr.io)** 为主），供他人 `docker pull` 使用。若仅需内网或本机使用，无需执行本文流程（见主 `README`「未发布镜像仓库时怎么用」）。
+
+### 本仓库快速推送（GHCR + GitHub Actions）
+
+已内置工作流 **[`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml)**，推送到 **GitHub** 后按下列步骤即可开始推送：
+
+1. **仓库设置**：**Settings → Actions → General → Workflow permissions** 勾选 **Read and write permissions**（使 `GITHUB_TOKEN` 能写入 `ghcr.io`；若使用默认只读权限，推送会失败）。
+2. **触发构建**（二选一）  
+   - **打 Git 标签**：`git tag v0.1.0 && git push origin v0.1.0`（标签须符合 `v*.*.*` ）  
+   - **手动运行**：**Actions** → **Publish Docker image (GHCR)** → **Run workflow**，输入版本号（如 `0.1.0`，**不要** `v` 前缀）。
+3. **公开包**（首次）：构建成功后到 **Packages** 页面，将 **`log4ai-server`** 设为 **Public**，否则他人拉取可能无权限。
+4. **拉取**：`docker pull ghcr.io/<你的小写 GitHub 用户名或组织>/log4ai-server:0.1.0`
+
+以下为通用说明（含 Docker Hub 与手动 `docker push`）。
+
+---
+
+## 1. 目标与边界
+
+| 项目 | 说明 |
+|------|------|
+| **交付物** | 可运行的 OCI 镜像，默认入口为 **standalone** 可执行 JAR（`Log4AiStandaloneApplication`），监听 **8080**。 |
+| **不包含** | 业务日志、LLM API Key、私有证书；这些由部署方通过 **环境变量 / Secret / 挂载卷** 注入。 |
+| **与 Maven 构件关系** | 镜像内嵌 **`*-standalone.jar`**；发布 Maven 坐标（`com.log4ai:spring-boot-log4ai`）与发布 Docker 镜像**相互独立**，可分开版本号。 |
+
+---
+
+## 2. 公共镜像库选型
+
+| 平台 | 镜像地址示例 | 特点 |
+|------|----------------|------|
+| **Docker Hub** | `docker.io/<namespace>/log4ai-server` | 生态最广；免费账号有拉取速率与私有库数量限制。 |
+| **GitHub Container Registry (GHCR)** | `ghcr.io/<org-or-user>/log4ai-server` | 与 GitHub 仓库同源协作方便；可对公开仓库设公开包。 |
+| **其他** | 阿里云 ACR 国际站、Quay.io 等 | 按团队合规与网络选择；流程与下文类似，仅 **login / 前缀** 不同。 |
+
+**命名建议**：仓库名用 **`log4ai-server`** 或 **`spring-boot-log4ai`**，与 Maven `artifactId` 对齐，避免与「库 JAR」混淆时可加后缀 `-standalone`。
+
+---
+
+## 3. 镜像命名与标签（Tag）策略
+
+推荐**多标签**指向同一构建，便于运维锁定版本。
+
+| 标签类型 | 示例 | 用途 |
+|----------|------|------|
+| **语义化版本** | `0.1.0`、`0.1.1` | 正式发布，与 Git tag / Maven 版本对齐。 |
+| **主版本浮动** | `0.1` | 指向该主版本线最新补丁（可选，需流程约定）。 |
+| **`latest`** | `latest` | 默认拉取；**建议仅 stable 发布时更新**，避免将不稳定构建标为 latest。 |
+| **预发布** | `0.2.0-rc.1`、`sha-abc1234` | CI 每 commit 或 PR 构建（可选）。 |
+
+**禁止**：将 **密钥、令牌** 打进镜像层或标签名。
+
+---
+
+## 4. 前置条件
+
+1. **Docker Buildx**（Docker Desktop 或 Linux 已自带），用于多平台可选扩展（见第 8 节）。
+2. **镜像库账号**：Docker Hub 注册 namespace；GitHub 对目标仓库有 **packages** 权限。
+3. **访问令牌**（勿提交仓库）  
+   - Docker Hub：**Account → Security → New Access Token**  
+   - GHCR：GitHub **Personal Access Token (classic)**，勾选 `write:packages`（及 `read:packages`）
+4. 本地已能成功 **`docker build`**（见项目根目录 `Dockerfile`）。
+
+---
+
+## 5. 本地构建与手动推送（一次通）
+
+以下以 **Docker Hub**、`namespace=log4ai` 为例，请替换为你的命名空间与版本。
+
+```bash
+cd /path/to/Spring-Boot-Log4AI
+
+# 1）构建（与 CI 一致，打版本标签）
+export VERSION=0.1.0
+docker build -t log4ai/log4ai-server:${VERSION} -t log4ai/log4ai-server:latest .
+
+# 2）登录（交互输入密码或令牌）
+docker login
+
+# 3）推送（多标签需分别推送，或使用 buildx --tag 多枚一次推）
+docker push log4ai/log4ai-server:${VERSION}
+docker push log4ai/log4ai-server:latest
+```
+
+**GHCR 示例**：
+
+```bash
+export VERSION=0.1.0
+export GH_USER=your-github-username
+docker build -t ghcr.io/${GH_USER}/log4ai-server:${VERSION} .
+
+echo <GITHUB_PAT> | docker login ghcr.io -u ${GH_USER} --password-stdin
+docker push ghcr.io/${GH_USER}/log4ai-server:${VERSION}
+```
+
+---
+
+## 6. CI 自动推送（推荐）
+
+将 **构建 + 推送** 放在 CI，避免本机环境不一致，且令牌用 **Secret** 注入。
+
+### 6.1 通用要点
+
+- **触发条件**：`push` 到 `main` / `release/*` 或打 **Git tag `v*`**。
+- **Secrets**：`DOCKERHUB_TOKEN` / `GHCR_TOKEN`，**不要**写入 `Dockerfile` 或 yaml 明文。
+- **缓存**：利用 GitHub Actions `cache-from/to type=gha` 或 Registry cache 加速 Maven 阶段。
+
+### 6.2 GitHub Actions 示例（Docker Hub）
+
+将以下内容保存为 `.github/workflows/docker-publish.yml`（需根据分支名、镜像名微调）：
+
+```yaml
+name: Publish Docker image
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+env:
+  IMAGE_NAME: log4ai/log4ai-server
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: ver
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.VERSION }}
+            ${{ env.IMAGE_NAME }}:latest
+```
+
+**需在仓库 Settings → Secrets** 配置：`DOCKERHUB_USERNAME`、`DOCKERHUB_TOKEN`。
+
+### 6.3 GitHub Actions 推送 GHCR
+
+使用 `docker/login-action` 的 `registry: ghcr.io`，`username` 为 GitHub 用户或 `github.actor`，`password` 为 `GITHUB_TOKEN`（默认 `packages: write` 权限需在 workflow `permissions` 中打开）或 PAT。
+
+---
+
+## 7. 使用者拉取与运行
+
+发布后在文档中固定给出**可复制**命令（示例）：
+
+```bash
+docker pull log4ai/log4ai-server:0.1.0
+
+docker run --rm -p 8080:8080 \
+  -e LLM_API_KEY=sk-*** \
+  -e LOGGING_FILE_NAME=/data/logs/application.log \
+  -v /宿主机日志目录:/data/logs:ro \
+  log4ai/log4ai-server:0.1.0
+```
+
+说明：
+
+- **密钥**始终通过 **`-e` / `--env-file` / K8s Secret** 传入；
+- **日志路径**为容器内路径，与 **`-v` 挂载**一致；
+- 需要持久化控制台配置时，挂载 **`/app/.log4ai`**（见主 `README` Docker 章节）。
+
+---
+
+## 8. 可选：多架构镜像（amd64 / arm64）
+
+在 Apple Silicon 或混合集群中，可使用 **buildx** 一次构建多平台并推送：
+
+```bash
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t log4ai/log4ai-server:0.1.0 --push .
+```
+
+注意：多阶段构建中 **Maven 阶段**在目标平台执行，CI 中通常用 **QEMU**（`docker/setup-qemu-action`）或分架构矩阵构建。
+
+---
+
+## 9. 安全与合规清单
+
+- [ ] 镜像内**无** `LLM_API_KEY`、数据库密码等（仅用占位或运行时注入）。
+- [ ] `.dockerignore` 已排除 `target/`、`.git`，避免误拷构建产物与历史。
+- [ ] 使用**非 root** 用户运行（当前 `Dockerfile` 已 `USER log4ai`）。
+- [ ] 定期用 **`docker scout`** / Trivy 扫描基础镜像漏洞（可选）。
+- [ ] 公开镜像说明中写明：**软件许可证**、**数据与日志不落盘到镜像**、**用户自行承担 LLM 调用费用与合规**。
+
+---
+
+## 10. 与 Maven 版本对齐建议
+
+| 场景 | 建议 |
+|------|------|
+| **发版** | Git tag `v0.1.0` → Maven `0.1.0` → Docker tag `0.1.0`，三者一致。 |
+| **SNAPSHOT** | 一般不推公共 `latest`；可推 `0.2.0-SNAPSHOT` 或仅 CI 内网 registry。 |
+| **文档** | 在 `README` 增加「Docker 镜像」小节，写清 **`docker pull` 地址** 与**最小运行示例**。 |
+
+---
+
+## 11. 回滚与灾备
+
+- **回滚应用**：部署时改 tag 为上一语义化版本（如 `0.1.0` → `0.0.9`）。
+- **镜像删除**：在 Docker Hub / GHCR 控制台删除有问题的 tag；**勿依赖** `latest` 做生产唯一标识。
+
+---
+
+## 12. 检查清单（发布前）
+
+- [ ] `Dockerfile` 可在一台干净机器上 **`docker build` 成功**  
+- [ ] 本地 **`docker run`** 能打开 `/log4ai/index.html` 且能读挂载日志（可选冒烟）  
+- [ ] CI 使用 **Secret** 登录 registry，流水线日志中**无**令牌明文  
+- [ ] README 或 Release Note 已更新 **镜像坐标、标签、运行示例**  
+- [ ] （若公开）许可证与第三方依赖说明可查阅  
+
+---
+
+*文档版本：与 Spring-Boot-Log4AI 仓库同步维护；具体命令以实际 `Dockerfile`、分支策略为准。*

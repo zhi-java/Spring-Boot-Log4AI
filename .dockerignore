@@ -1,0 +1,8 @@
+# 构建在镜像内执行 mvn package，宿主机 target 不复制进上下文
+target/
+.git
+.idea
+.vscode
+*.iml
+.DS_Store
+**/Thumbs.db

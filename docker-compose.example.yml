@@ -1,0 +1,25 @@
+# 复制为 docker-compose.yml 后按需修改。
+# 要点：把「要分析的日志」挂进容器，且路径与配置一致（见 README「Docker 部署」）。
+
+services:
+  log4ai:
+    build: .
+    image: log4ai-server:local
+    ports:
+      - "8080:8080"
+    environment:
+      # 必填：大模型密钥
+      LLM_API_KEY: ${LLM_API_KEY:?请在 .env 或环境中设置 LLM_API_KEY}
+      # 单实例：活动日志在容器内的路径（需与下方 volume 挂载点一致）
+      LOGGING_FILE_NAME: /data/logs/application.log
+      # 可选：覆盖网关地址与模型（也可用外部 application.yml）
+      # LOG4AI_LLM_BASE_URL: https://api.openai.com/v1
+      # LOG4AI_LLM_MODEL_NAME: gpt-4o-mini
+    volumes:
+      # 宿主机日志目录 -> 容器内 /data/logs（只读即可）
+      - ./host-logs:/data/logs:ro
+      # 可选：持久化控制台「日志服务」等设置（user.dir 默认 /app）
+      # - log4ai-settings:/app/.log4ai
+
+# volumes:
+#   log4ai-settings:

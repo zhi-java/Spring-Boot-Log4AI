@@ -1,0 +1,4 @@
+com.log4ai.autoconfigure.Log4AiAutoConfiguration
+com.log4ai.autoconfigure.Log4AiStreamingAutoConfiguration
+com.log4ai.autoconfigure.Log4AiWebAutoConfiguration
+com.log4ai.autoconfigure.Log4AiRegistryClientAutoConfiguration
