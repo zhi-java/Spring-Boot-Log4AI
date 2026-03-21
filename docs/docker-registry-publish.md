@@ -253,7 +253,31 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 ---
 
-## 12. 检查清单（发布前）
+## 12. 常见问题
+
+### `docker build` 拉取基础镜像失败（`unable to fetch descriptor` / `content size of zero`）
+
+多为访问 **Docker Hub（docker.io）** 不稳定或被限速。可尝试：
+
+- **Docker Desktop** → **Settings** → **Docker Engine** 配置国内 **registry-mirrors**（按你所在网络文档操作）；
+- 换网络 / 代理后重试，或执行 **`docker pull eclipse-temurin:17-jre-jammy`** 单独验证能否拉取；
+- **不在本机构建**：把代码推 GitHub，用 **[`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml)** 在云端构建并推 **GHCR**（不依赖本机访问 Docker Hub）。
+
+本仓库 **`Dockerfile`** 已使用 **Debian/Ubuntu 系**基础镜像（`maven:3.9-eclipse-temurin-17`、`eclipse-temurin:17-jre-jammy`），避免部分环境下 **Alpine** manifest 异常。
+
+### `docker login ghcr.io` 报 `denied`
+
+- **Classic PAT**：勾选 **`write:packages`**、**`read:packages`**（若需拉取私有包）；  
+- **Fine-grained PAT**：在仓库或组织下授予 **Packages** 读写；  
+- 用户名填 **GitHub 用户名**（与 PAT 所属账号一致），且 **GHCR 镜像路径须小写**。
+
+### 安全
+
+**切勿**在聊天、截图、录屏中泄露 **PAT**。若已泄露，请立即在 GitHub **Settings → Developer settings → Tokens** **撤销**该令牌并新建。
+
+---
+
+## 13. 检查清单（发布前）
 
 - [ ] `Dockerfile` 可在一台干净机器上 **`docker build` 成功**  
 - [ ] 本地 **`docker run`** 能打开 `/log4ai/index.html` 且能读挂载日志（可选冒烟）  
