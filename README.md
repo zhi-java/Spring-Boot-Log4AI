@@ -416,6 +416,8 @@ sequenceDiagram
 
 详见 [docs/docker-registry-publish.md](docs/docker-registry-publish.md) 中的推送与公开包说明。
 
+**Windows CMD 一键脚本**：[`scripts/ghcr-build-push.bat`](scripts/ghcr-build-push.bat)（构建 + 登录 ghcr.io + 推送；需先 `set GITHUB_PAT=...` 或使用交互登录）。
+
 ---
 
 ## 验证与排错
