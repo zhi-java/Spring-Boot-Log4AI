@@ -36,13 +36,14 @@ if "%GH_USER%"=="" (
 )
 
 set "IMAGE=ghcr.io/%GH_USER%/log4ai-server:%VERSION%"
+set "IMAGE_LATEST=ghcr.io/%GH_USER%/log4ai-server:latest"
 
 echo.
-echo [1/3] docker build  %IMAGE%
+echo [1/3] docker build  %IMAGE%  +  :latest
 echo.
 set "BUILD_EXTRA="
 if "%DOCKER_BUILD_NO_CACHE%"=="1" set "BUILD_EXTRA=--no-cache"
-docker build %BUILD_EXTRA% -t "%IMAGE%" .
+docker build %BUILD_EXTRA% -t "%IMAGE%" -t "%IMAGE_LATEST%" .
 if errorlevel 1 (
   echo [ERR] docker build failed.
   exit /b 1
@@ -77,10 +78,13 @@ if "%GITHUB_PAT%"=="" (
 )
 
 echo.
-echo [3/3] docker push  %IMAGE%
+echo [3/3] docker push  %IMAGE%  and  :latest
 docker push "%IMAGE%"
+if errorlevel 1 exit /b 1
+docker push "%IMAGE_LATEST%"
 if errorlevel 1 exit /b 1
 
 echo.
 echo OK: %IMAGE%
+echo OK: %IMAGE_LATEST%
 exit /b 0

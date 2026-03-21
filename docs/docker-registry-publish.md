@@ -298,6 +298,15 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 - 已装 **GitHub CLI** 时：`gh auth login` 后  
   `gh auth token | docker login ghcr.io -u 用户名 --password-stdin`
 
+### `docker pull` 报 `manifest unknown`
+
+- **未指定 tag** 时默认拉 **`latest`**；若只推送过 **`0.1.0`** 等版本而从未推送 **`latest`**，会报此错。请：  
+  `docker pull ghcr.io/OWNER/log4ai-server:0.1.0`  
+  或使用本仓库 **`scripts/ghcr-build-push.bat`** / **CI**（已同时推送 **版本号** 与 **`latest`**）。  
+- **从未成功 push** 到 GHCR，或包名/Owner 拼写错误。  
+- **私有包**：未 **`docker login ghcr.io`** 或无权访问。  
+- 在 **GitHub → Packages** 确认镜像已存在且 tag 列表中有目标 tag。
+
 ### 安全
 
 **切勿**在聊天、截图、录屏中泄露 **PAT**。若已泄露，请立即在 GitHub **Settings → Developer settings → Tokens** **撤销**该令牌并新建。
