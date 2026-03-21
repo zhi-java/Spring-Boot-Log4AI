@@ -8,6 +8,9 @@ REM If build fails with "failed size validation" / "layer-sha256 ... failed prec
 REM   1) scripts\docker-prune-build-cache.bat
 REM   2) Optional: set DOCKER_BUILDKIT=0  (legacy builder)
 REM   3) Optional: set DOCKER_BUILD_NO_CACHE=1  (this script passes --no-cache to docker build)
+REM If Docker Hub blocks maven image (metadata / pull errors), use host Maven instead:
+REM   set DOCKER_USE_PREBUILT=1
+REM   then run this script (requires JDK 17 + Maven on PATH; builds JAR if missing)
 
 setlocal EnableExtensions
 cd /d "%~dp0.."
@@ -15,6 +18,25 @@ cd /d "%~dp0.."
 if not exist "Dockerfile" (
   echo [ERR] Dockerfile not found. Run this script from the repository root ^(cd .. from scripts^).
   exit /b 1
+)
+
+set "DOCKER_FILE=Dockerfile"
+if "%DOCKER_USE_PREBUILT%"=="1" (
+  if not exist "Dockerfile.prebuilt" (
+    echo [ERR] Dockerfile.prebuilt not found.
+    exit /b 1
+  )
+  set "DOCKER_FILE=Dockerfile.prebuilt"
+  set "JARFILE="
+  for %%F in (target\spring-boot-log4ai-*-standalone.jar) do set "JARFILE=%%F"
+  if not defined JARFILE (
+    echo [INFO] No standalone JAR in target\. Running mvn -DskipTests package ...
+    call mvn -q -DskipTests package
+    if errorlevel 1 (
+      echo [ERR] mvn package failed. Install Maven + JDK 17, or unset DOCKER_USE_PREBUILT and fix Docker Hub access.
+      exit /b 1
+    )
+  )
 )
 
 set "VERSION=%~1"
@@ -31,13 +53,16 @@ if "%GH_USER%"=="" (
 set "IMAGE=ghcr.io/%GH_USER%/log4ai-server:%VERSION%"
 
 echo.
-echo [1/3] docker build  %IMAGE%
+echo [1/3] docker build -f %DOCKER_FILE%  %IMAGE%
 echo.
 set "BUILD_EXTRA="
 if "%DOCKER_BUILD_NO_CACHE%"=="1" set "BUILD_EXTRA=--no-cache"
-docker build %BUILD_EXTRA% -t "%IMAGE%" .
+docker build %BUILD_EXTRA% -f "%DOCKER_FILE%" -t "%IMAGE%" .
 if errorlevel 1 (
-  echo [ERR] docker build failed. Check Docker Hub access or use GitHub Actions to build.
+  echo [ERR] docker build failed. If maven:* image metadata/pull failed, try:
+  echo   set DOCKER_USE_PREBUILT=1
+  echo   scripts\ghcr-build-push.bat
+  echo Or use GitHub Actions to build.
   exit /b 1
 )
 

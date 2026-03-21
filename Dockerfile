@@ -2,7 +2,7 @@
 # 日志分析依赖「容器内可见路径」：请用 volume 挂载宿主机日志目录，并与 logging.file / log4ai.logs 配置一致。
 #
 # 构建阶段与运行时使用 Debian/Ubuntu 系镜像（非 Alpine），在部分网络环境下拉取 manifest 比 alpine 更稳定。
-# 若仍无法访问 docker.io，请在 Docker Desktop 配置镜像加速或使用 CI（GitHub Actions）构建。
+# 若仍无法访问 docker.io 或无法拉取 maven 镜像：本机 mvn package 后使用 Dockerfile.prebuilt（仅 JRE 层）。
 
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /src

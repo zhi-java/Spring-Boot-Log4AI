@@ -281,6 +281,18 @@ docker buildx build --platform linux/amd64,linux/arm64 \
    `docker rmi maven:3.9-eclipse-temurin-17`（若提示被占用可先停相关容器）→ `docker pull maven:3.9-eclipse-temurin-17`
 5. **重启 Docker Desktop**，仍失败则用 **GitHub Actions** 在云端构建（见 `docker-publish.yml`）。
 
+### 无法拉取 `maven:*` 基础镜像（`failed to resolve source metadata` / `content size of zero`）
+
+常见于 **Docker Hub 访问受限**（网络或地区）。可选：
+
+1. **本机先打 JAR，再只打运行镜像**（不再拉取 Maven 镜像）：  
+   - 仓库提供 **`Dockerfile.prebuilt`**，仅基于 **`eclipse-temurin:17-jre-jammy`** 复制 `target/*-standalone.jar`。  
+   - CMD：先 `mvn -DskipTests package`，再  
+     `docker build -f Dockerfile.prebuilt -t ghcr.io/USER/log4ai-server:0.1.0 .`  
+   - 或使用 **`set DOCKER_USE_PREBUILT=1`** 后运行 **`scripts/ghcr-build-push.bat`**（无 JAR 时会自动执行 `mvn package`，需本机已装 **JDK 17 + Maven**）。  
+2. 在 Docker Desktop 配置 **registry-mirrors** 后再用默认 **`Dockerfile`** 多阶段构建。  
+3. 使用 **GitHub Actions**（云端拉取镜像通常更稳定）。
+
 ### `docker login ghcr.io` 报 `denied`
 
 - **Classic PAT**：勾选 **`write:packages`**、**`read:packages`**（若需拉取私有包）；  
