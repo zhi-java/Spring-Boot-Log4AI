@@ -20,6 +20,7 @@
 - [暴露给模型的工具](#暴露给模型的工具)
 - [ReAct 与 Tool Calling（设计核心）](#react-与-tool-calling设计核心)
 - [架构与自动配置](#架构与自动配置)
+- [GitHub Actions](#github-actions)
 - [验证与排错](#验证与排错)
 - [与全面上云的 AIOps 对比](#与全面上云的-aiops-对比)
 - [License](#license)
@@ -399,6 +400,21 @@ sequenceDiagram
 - `LogAnalyzerStreamingService`：`TokenStream` → SSE。  
 - 自动配置顺序：`Log4AiAutoConfiguration` → `Log4AiStreamingAutoConfiguration` → `Log4AiWebAutoConfiguration`；客户端注册：`Log4AiRegistryClientAutoConfiguration`。  
 - 入口：`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`。
+
+---
+
+## GitHub Actions
+
+仓库 [`.github/workflows/`](.github/workflows/) 已配置：
+
+| 工作流 | 触发 | 作用 |
+|--------|------|------|
+| [**`ci.yml`**](.github/workflows/ci.yml) | 推送到 **`main` / `master`** 或针对这两支的 **Pull Request** | JDK 17 下执行 **`mvn -B verify`**，并将 **`spring-boot-log4ai-*-standalone.jar`** 作为 **Artifact** 上传（便于下载、未推镜像也能拿可执行包）。 |
+| [**`docker-publish.yml`**](.github/workflows/docker-publish.yml) | 推送 **`v*.*.*`** 标签，或 **Actions → 手动 Run workflow** | 构建 Docker 镜像并推送到 **GHCR**（`ghcr.io/<owner>/log4ai-server`）。 |
+
+**启用前**：在仓库 **Settings → Actions → General → Workflow permissions** 中，若需 **推送 GHCR**，请勾选 **Read and write permissions**（或授予 `GITHUB_TOKEN` 写 `packages`）。仅跑 **CI** 时默认只读权限即可。
+
+详见 [docs/docker-registry-publish.md](docs/docker-registry-publish.md) 中的推送与公开包说明。
 
 ---
 

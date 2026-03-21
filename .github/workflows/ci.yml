@@ -1,0 +1,35 @@
+# 每次推送到 main / 对 main 的 PR 时编译并打包（含 standalone JAR 产物校验）
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Maven verify
+        run: mvn -B verify
+
+      - name: Upload standalone JAR (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-boot-log4ai-standalone-jar
+          path: target/spring-boot-log4ai-*-standalone.jar
+          if-no-files-found: error

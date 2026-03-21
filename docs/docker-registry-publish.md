@@ -4,7 +4,7 @@
 
 ### 本仓库快速推送（GHCR + GitHub Actions）
 
-已内置工作流 **[`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml)**，推送到 **GitHub** 后按下列步骤即可开始推送：
+已内置工作流 **[`docker-publish.yml`](../.github/workflows/docker-publish.yml)**（镜像）与 **[`ci.yml`](../.github/workflows/ci.yml)**（`mvn verify` + 上传 JAR）。推送到 **GitHub** 后按下列步骤即可开始推送镜像：
 
 1. **仓库设置**：**Settings → Actions → General → Workflow permissions** 勾选 **Read and write permissions**（使 `GITHUB_TOKEN` 能写入 `ghcr.io`；若使用默认只读权限，推送会失败）。
 2. **触发构建**（二选一）  
