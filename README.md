@@ -416,7 +416,7 @@ sequenceDiagram
 
 详见 [docs/docker-registry-publish.md](docs/docker-registry-publish.md) 中的推送与公开包说明。
 
-**Windows CMD 一键脚本**：[`scripts/ghcr-build-push.bat`](scripts/ghcr-build-push.bat)（构建 + 登录 ghcr.io + 推送；需先 `set GITHUB_PAT=...` 或使用交互登录）。
+**Windows CMD 一键脚本**：[`scripts/ghcr-build-push.bat`](scripts/ghcr-build-push.bat)（构建 + 登录 ghcr.io + 推送；需先 `set GITHUB_PAT=...` 或使用交互登录）。**说明**：该 `.bat` 为 **纯英文/ASCII**，避免 CMD 在中文 Windows 下对 UTF-8 无 BOM 脚本的乱码解析；请在 **CMD** 中运行（若用 PowerShell 调用 `.bat` 仍走 CMD 解释器，一般可用）。
 
 ---
 
