@@ -50,10 +50,24 @@ if errorlevel 1 (
 
 echo.
 echo [2/3] docker login ghcr.io
+docker logout ghcr.io 2>nul
 if "%GITHUB_PAT%"=="" (
-  echo GITHUB_PAT not set. Using interactive login. Paste PAT as password.
+  echo.
+  echo --- GHCR login help ---
+  echo Username: your GitHub LOGIN name (same as below). NOT your email.
+  echo Password: a Personal Access Token starting with ghp_. NOT your GitHub account password.
+  echo Create PAT: GitHub - Settings - Developer settings - Fine-grained or Classic.
+  echo Classic scopes: read:packages + write:packages
+  echo If org uses SSO: authorize the token for that org on the token page.
+  echo Easier: set GITHUB_PAT=ghp_... in this CMD window, then re-run this script.
+  echo -------------------------
+  echo.
+  echo Interactive login for user: %GH_USER%
   docker login ghcr.io -u "%GH_USER%"
-  if errorlevel 1 exit /b 1
+  if errorlevel 1 (
+    echo [ERR] Login denied. See messages above. Or: set GITHUB_PAT=ghp_... and run again.
+    exit /b 1
+  )
 ) else (
   echo %GITHUB_PAT%| docker login ghcr.io -u "%GH_USER%" --password-stdin
   if errorlevel 1 (

@@ -289,7 +289,14 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 - **Classic PAT**：勾选 **`write:packages`**、**`read:packages`**（若需拉取私有包）；  
 - **Fine-grained PAT**：在仓库或组织下授予 **Packages** 读写；  
-- 用户名填 **GitHub 用户名**（与 PAT 所属账号一致），且 **GHCR 镜像路径须小写**。
+- **用户名**：填 **GitHub 登录名**（与 PAT 所属账号一致），**不要**用邮箱；**密码**处粘贴 **PAT**（`ghp_` 开头），**不要**填 GitHub 网页登录密码。  
+- **组织启用 SSO**：在 **Settings → Developer settings → 该令牌** 页面点 **Configure SSO** / **Authorize**，否则推送仍可能被拒。  
+- 先 **`docker logout ghcr.io`** 再登录，避免旧错误凭证缓存。  
+- 交互式粘贴异常时，在 CMD 中：  
+  `set GITHUB_PAT=ghp_你的令牌`  
+  `echo %GITHUB_PAT%| docker login ghcr.io -u 你的用户名 --password-stdin`  
+- 已装 **GitHub CLI** 时：`gh auth login` 后  
+  `gh auth token | docker login ghcr.io -u 用户名 --password-stdin`
 
 ### 安全
 
