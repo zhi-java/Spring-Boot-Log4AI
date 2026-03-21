@@ -26,6 +26,10 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    # 与顶层 permissions 一致；部分组织策略下 job 级声明可避免 GITHUB_TOKEN 无 write_package
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4

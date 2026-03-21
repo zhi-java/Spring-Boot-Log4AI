@@ -281,6 +281,19 @@ docker buildx build --platform linux/amd64,linux/arm64 \
    `docker rmi eclipse-temurin:17-jre-jammy`（若提示被占用可先停相关容器）→ `docker pull eclipse-temurin:17-jre-jammy`
 5. **重启 Docker Desktop**，仍失败则用 **GitHub Actions** 在云端构建（见 `docker-publish.yml`）。
 
+### GitHub Actions / buildx 报 `permission_denied: write_package`
+
+表示当前用于推送 GHCR 的 **`GITHUB_TOKEN` 没有写入 Packages 权限**，或组织策略禁止。按顺序检查：
+
+1. **本仓库**：**Settings → Actions → General → Workflow permissions**  
+   - 必须选 **Read and write permissions**（不要选仅「只读仓库内容」）。  
+   - 保存后 **Re-run failed jobs** 重跑工作流。
+2. **组织仓库**：需 **组织管理员** 在 **Organization → Settings → Actions → General** 中允许工作流使用可写权限（不同组织菜单名称可能为 *Workflow permissions* / *GITHUB_TOKEN* 相关项）。
+3. **Fork 上开的 PR**：`GITHUB_TOKEN` 对上游仓库的 GHCR **无写权限**，应在**源仓库**上打 tag 推送，或改用 **PAT**（见下）。
+4. **仍失败时**：在仓库 **Secrets** 中新增 **`GHCR_TOKEN`**（Classic PAT，勾选 **`write:packages`**），并把工作流里登录步骤改为使用该 Secret（需改 `docker-publish.yml`）；或联系组织管理员放行 **Packages 写入**。
+
+工作流文件已声明 `permissions: packages: write`；若组织强制 **只读**，仅改 YAML 不够，必须调组织/仓库设置或改用 PAT。
+
 ### 无法拉取 `maven:*` 基础镜像
 
 **当前默认 `Dockerfile` 已不再使用 Maven 镜像**：先在宿主机或 CI 执行 **`mvn -DskipTests package`**，再 **`docker build`**，仅拉取 **`eclipse-temurin:17-jre-jammy`**。若仍失败，请配置 Docker **registry-mirrors** 或使用 **GitHub Actions** 构建。
