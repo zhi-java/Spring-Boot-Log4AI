@@ -95,6 +95,41 @@ echo <GITHUB_PAT> | docker login ghcr.io -u ${GH_USER} --password-stdin
 docker push ghcr.io/${GH_USER}/log4ai-server:${VERSION}
 ```
 
+**GHCR 镜像名须全小写**（`ghcr.io/<owner>/log4ai-server`）；上面 `GH_USER` 请使用小写 GitHub 用户名。
+
+### Windows（PowerShell / CMD）
+
+上文为 **bash**；在 **Windows** 上请用下面写法（勿使用 `export`、`${VAR}` 除非在 **Git Bash / WSL** 中）。
+
+**PowerShell**（推荐）：
+
+```powershell
+cd C:\path\to\Spring-Boot-Log4AI
+
+$env:VERSION = "0.1.0"
+$env:GH_USER = "your-github-username"   # 小写
+
+docker build -t "ghcr.io/$($env:GH_USER)/log4ai-server:$($env:VERSION)" .
+
+$env:GITHUB_PAT = "ghp_xxxxxxxx"   # 勿用字面 <GITHUB_PAT>；勿提交真实令牌
+$env:GITHUB_PAT | docker login ghcr.io -u $env:GH_USER --password-stdin
+
+docker push "ghcr.io/$($env:GH_USER)/log4ai-server:$($env:VERSION)"
+```
+
+**CMD**：
+
+```bat
+set VERSION=0.1.0
+set GH_USER=your-github-username
+docker build -t ghcr.io/%GH_USER%/log4ai-server:%VERSION% .
+
+set GITHUB_PAT=ghp_xxxxxxxx
+echo %GITHUB_PAT% | docker login ghcr.io -u %GH_USER% --password-stdin
+
+docker push ghcr.io/%GH_USER%/log4ai-server:%VERSION%
+```
+
 ---
 
 ## 6. CI 自动推送（推荐）
