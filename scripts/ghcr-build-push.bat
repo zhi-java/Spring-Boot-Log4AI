@@ -28,7 +28,7 @@ set "VERSION=%~1"
 set "GH_USER=%~2"
 
 if "%VERSION%"=="" set "VERSION=0.1.0"
-if "%GH_USER%"=="" set /p "GH_USER=GitHub username (lowercase): "
+if "%GH_USER%"=="" set /p "GH_USER=GitHub username [lowercase]: "
 
 if "%GH_USER%"=="" (
   echo [ERR] GitHub username is required.
@@ -54,18 +54,18 @@ docker logout ghcr.io 2>nul
 if "%GITHUB_PAT%"=="" (
   echo.
   echo --- GHCR login help ---
-  echo Username: your GitHub LOGIN name (same as below). NOT your email.
-  echo Password: a Personal Access Token starting with ghp_. NOT your GitHub account password.
-  echo Create PAT: GitHub - Settings - Developer settings - Fine-grained or Classic.
+  echo Username: GitHub LOGIN name - must match GH_USER above. NOT email.
+  echo Password: Personal Access Token starting with ghp_. NOT GitHub web password.
+  echo Create PAT: GitHub - Settings - Developer settings - Fine-grained or Classic token.
   echo Classic scopes: read:packages + write:packages
-  echo If org uses SSO: authorize the token for that org on the token page.
-  echo Easier: set GITHUB_PAT=ghp_... in this CMD window, then re-run this script.
+  echo If org uses SSO: authorize token for that org on the token page.
+  echo Easier: set GITHUB_PAT=ghp_xxx in this CMD window, then re-run this script.
   echo -------------------------
   echo.
   echo Interactive login for user: %GH_USER%
   docker login ghcr.io -u "%GH_USER%"
   if errorlevel 1 (
-    echo [ERR] Login denied. See messages above. Or: set GITHUB_PAT=ghp_... and run again.
+    echo [ERR] Login denied. See messages above. Or set GITHUB_PAT=ghp_xxx and run again.
     exit /b 1
   )
 ) else (
