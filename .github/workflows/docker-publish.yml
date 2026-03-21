@@ -59,22 +59,14 @@ jobs:
           echo "version=${VER}" >> "$GITHUB_OUTPUT"
           echo "image=ghcr.io/${OWNER}/${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
 
-      # 优先使用仓库 Secret GHCR_TOKEN（Classic PAT，勾选 write:packages），可绕过组织限制 GITHUB_TOKEN 写 GHCR 的情况
-      - name: Log in to GitHub Container Registry (PAT)
-        if: ${{ secrets.GHCR_TOKEN != '' }}
+      # 优先使用 Secret GHCR_TOKEN（PAT）；未配置时 secrets.GHCR_TOKEN 为空串，|| 回退到 GITHUB_TOKEN。
+      # 注意：GitHub 不允许在 if: 里引用 secrets.*，故不能用两个带 if 的登录步骤。
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Log in to GitHub Container Registry (GITHUB_TOKEN)
-        if: ${{ secrets.GHCR_TOKEN == '' }}
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
