@@ -21,6 +21,9 @@ release.properties
 # 运行时控制台写入的本地设置（常含 API Key 与机器路径）
 .log4ai/
 
+# 离线传递未推送提交用的 git bundle（勿提交）
+*.bundle
+
 # OS
 .DS_Store
 Thumbs.db
