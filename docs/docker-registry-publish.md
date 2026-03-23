@@ -13,6 +13,24 @@
 3. **公开包**（首次）：构建成功后到 **Packages** 页面，将 **`log4ai-server`** 设为 **Public**，否则他人拉取可能无权限。
 4. **拉取**：`docker pull ghcr.io/<你的小写 GitHub 用户名或组织>/log4ai-server:0.1.0`
 
+### 本机连不上 GitHub（无法 `git push`）时：用 Actions 在云端构建并推送
+
+工作流在 **GitHub 云端** 执行 `mvn package`、`docker build` 并 **`docker push` 到 GHCR**，**不依赖**你本机能否访问 `github.com:443`。但注意：**构建用的是 GitHub 仓库里 `main` 上的代码**；若你只在本地改了文件、从未推到远端，云端构建**不会包含**这些改动。
+
+**推荐流程**：
+
+1. **先把代码弄到 GitHub**（任选其一）  
+   - 换网络 / 代理 / SSH 后再 `git push`；  
+   - 或在仓库页 **Add file → Upload files** / 在线编辑，把变更提交到 `main`；  
+   - 或另一台能访问 GitHub 的机器克隆后拷贝你的改动再推送。
+2. 打开：**Actions** → 左侧 **Publish Docker image (GHCR)** → 右侧 **Run workflow**。  
+3. **Branch** 选 **`main`**（或你要打镜像的分支）。  
+4. **version** 填镜像标签，如 **`0.1.2`**（**不要**加 `v`）。  
+5. 点 **Run workflow**，等待绿色成功。  
+6. 服务器上：`docker pull ghcr.io/<owner>/log4ai-server:0.1.2`（或 `latest`，视工作流是否推送 `latest` 而定）。
+
+若已配置 Secret **`GHCR_TOKEN`**，登录步骤会优先用它，可缓解组织内 `GITHUB_TOKEN` 无法写 GHCR 的问题。
+
 以下为通用说明（含 Docker Hub 与手动 `docker push`）。
 
 ---
