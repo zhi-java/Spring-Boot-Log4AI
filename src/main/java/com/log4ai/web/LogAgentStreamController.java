@@ -43,10 +43,11 @@ public class LogAgentStreamController {
           HttpStatus.SERVICE_UNAVAILABLE,
           "流式未启用或未装配：请确认 log4ai.streaming.enabled=true 且应用已正常创建 OpenAiStreamingChatModel / LogAnalyzerStreamingService。");
     }
-    if (body == null || body.message() == null || body.message().isBlank()) {
+    if (body == null || body.message() == null || body.message().trim().isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message 不能为空");
     }
-    String sid = headerSession != null && !headerSession.isBlank() ? headerSession : body.sessionId();
+    String sid =
+        headerSession != null && !headerSession.trim().isEmpty() ? headerSession : body.sessionId();
     return svc.stream(sid, body.message());
   }
 }

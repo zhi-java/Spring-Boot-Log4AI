@@ -1,4 +1,4 @@
-# 公共镜像仓库发布方案（Docker）
+# 公共镜像仓库发布方案（Docker，JDK 8 兼容线）
 
 本文说明如何将 **Log4AI standalone** 镜像构建并推送到**公共**容器镜像库（以 **Docker Hub**、**GitHub Container Registry (ghcr.io)** 为主），供他人 `docker pull` 使用。若仅需内网或本机使用，无需执行本文流程（见主 `README`「未发布镜像仓库时怎么用」）。
 
@@ -8,10 +8,10 @@
 
 1. **仓库设置**：**Settings → Actions → General → Workflow permissions** 勾选 **Read and write permissions**（使 `GITHUB_TOKEN` 能写入 `ghcr.io`；若使用默认只读权限，推送会失败）。
 2. **触发构建**（二选一）  
-   - **打 Git 标签**：`git tag v0.1.0 && git push origin v0.1.0`（标签须符合 `v*.*.*` ）  
-   - **手动运行**：**Actions** → **Publish Docker image (GHCR)** → **Run workflow**，输入版本号（如 `0.1.0`，**不要** `v` 前缀）。
+   - **打 Git 标签**：`git tag jdk8-0.2.0 && git push origin jdk8-0.2.0`（标签须符合 `jdk8-*`）  
+   - **手动运行**：**Actions** → **Publish Docker image (GHCR)** → **Run workflow**，输入版本号（如 `jdk8-0.2.0`）。
 3. **公开包**（首次）：构建成功后到 **Packages** 页面，将 **`log4ai-server`** 设为 **Public**，否则他人拉取可能无权限。
-4. **拉取**：`docker pull ghcr.io/<你的小写 GitHub 用户名或组织>/log4ai-server:0.1.0`
+4. **拉取**：`docker pull ghcr.io/<你的小写 GitHub 用户名或组织>/log4ai-server:jdk8-0.2.0`
 
 ### 本机连不上 GitHub（无法 `git push`）时：用 Actions 在云端构建并推送
 
@@ -25,9 +25,9 @@
    - 或另一台能访问 GitHub 的机器克隆后拷贝你的改动再推送。
 2. 打开：**Actions** → 左侧 **Publish Docker image (GHCR)** → 右侧 **Run workflow**。  
 3. **Branch** 选 **`main`**（或你要打镜像的分支）。  
-4. **version** 填镜像标签，如 **`0.1.2`**（**不要**加 `v`）。  
+4. **version** 填镜像标签，如 **`jdk8-0.2.0`**。  
 5. 点 **Run workflow**，等待绿色成功。  
-6. 服务器上：`docker pull ghcr.io/<owner>/log4ai-server:0.1.2`（或 `latest`，视工作流是否推送 `latest` 而定）。
+6. 服务器上：`docker pull ghcr.io/<owner>/log4ai-server:jdk8-0.2.0`（如需稳定部署，建议显式使用该兼容线 tag 而非 `latest`）。
 
 若已配置 Secret **`GHCR_TOKEN`**，登录步骤会优先用它，可缓解组织内 `GITHUB_TOKEN` 无法写 GHCR 的问题。
 
@@ -41,7 +41,7 @@
 |------|------|
 | **交付物** | 可运行的 OCI 镜像，默认入口为 **standalone** 可执行 JAR（`Log4AiStandaloneApplication`），监听 **8080**。 |
 | **不包含** | 业务日志、LLM API Key、私有证书；这些由部署方通过 **环境变量 / Secret / 挂载卷** 注入。 |
-| **与 Maven 构件关系** | 镜像内嵌 **`*-standalone.jar`**；发布 Maven 坐标（`com.log4ai:spring-boot-log4ai`）与发布 Docker 镜像**相互独立**，可分开版本号。 |
+| **与 Maven 构件关系** | 镜像内嵌 **`*-standalone.jar`**；发布 Maven 坐标（`io.github.ml4497658:spring-boot-log4ai`）与发布 Docker 镜像**相互独立**，可分开版本号。 |
 
 ---
 
@@ -63,7 +63,7 @@
 
 | 标签类型 | 示例 | 用途 |
 |----------|------|------|
-| **语义化版本** | `0.1.0`、`0.1.1` | 正式发布，与 Git tag / Maven 版本对齐。 |
+| **语义化版本** | `jdk8-0.2.0`、`jdk8-0.2.1` | JDK 8 兼容线正式发布标签，与该分支 Git tag / Maven 版本对齐。 |
 | **主版本浮动** | `0.1` | 指向该主版本线最新补丁（可选，需流程约定）。 |
 | **`latest`** | `latest` | 默认拉取；**建议仅 stable 发布时更新**，避免将不稳定构建标为 latest。 |
 | **预发布** | `0.2.0-rc.1`、`sha-abc1234` | CI 每 commit 或 PR 构建（可选）。 |
@@ -258,7 +258,7 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 | 场景 | 建议 |
 |------|------|
-| **发版** | Git tag `v0.1.0` → Maven `0.1.0` → Docker tag `0.1.0`，三者一致。 |
+| **发版** | Git tag `jdk8-0.2.0` → Maven `jdk8-0.2.0` → Docker tag `jdk8-0.2.0`，三者一致。 |
 | **SNAPSHOT** | 一般不推公共 `latest`；可推 `0.2.0-SNAPSHOT` 或仅 CI 内网 registry。 |
 | **文档** | 在 `README` 增加「Docker 镜像」小节，写清 **`docker pull` 地址** 与**最小运行示例**。 |
 

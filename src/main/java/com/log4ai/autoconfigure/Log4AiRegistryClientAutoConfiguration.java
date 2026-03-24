@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.log4ai.config.LogAgentProperties;
 import com.log4ai.registry.client.Log4AiRegistryClientBootstrap;
 import com.log4ai.support.Log4AiSystemLogPaths;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -29,6 +29,6 @@ public class Log4AiRegistryClientAutoConfiguration {
       Log4AiSystemLogPaths systemLogPaths,
       @Value("${user.dir}") String userDir,
       ObjectMapper objectMapper) {
-    return new Log4AiRegistryClientBootstrap(props, systemLogPaths, Path.of(userDir), objectMapper);
+    return new Log4AiRegistryClientBootstrap(props, systemLogPaths, Paths.get(userDir), objectMapper);
   }
 }

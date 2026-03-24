@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -64,7 +65,41 @@ public final class LogFileSupport {
   }
 
   /** 解析后的活动日志与日历目录根（已转为绝对路径；列举/检索相对此根含子目录）。 */
-  public record ResolvedPaths(Path currentLogFile, Path calendarRoot, String serviceKey) {}
+  public static final class ResolvedPaths {
+    private final Path currentLogFile;
+    private final Path calendarRoot;
+    private final String serviceKey;
+
+    public ResolvedPaths(Path currentLogFile, Path calendarRoot, String serviceKey) {
+      this.currentLogFile = currentLogFile;
+      this.calendarRoot = calendarRoot;
+      this.serviceKey = serviceKey;
+    }
+
+    public Path getCurrentLogFile() {
+      return currentLogFile;
+    }
+
+    public Path getCalendarRoot() {
+      return calendarRoot;
+    }
+
+    public String getServiceKey() {
+      return serviceKey;
+    }
+
+    public Path currentLogFile() {
+      return currentLogFile;
+    }
+
+    public Path calendarRoot() {
+      return calendarRoot;
+    }
+
+    public String serviceKey() {
+      return serviceKey;
+    }
+  }
 
   /**
    * 根据 serviceId 解析路径。未配置 {@code log4ai.logs.services} 时使用本进程 {@code logging.file.*} 与约定路径自动解析。
@@ -78,7 +113,7 @@ public final class LogFileSupport {
       return systemLogPaths.resolve(workspace);
     }
     String id =
-        serviceIdInput == null || serviceIdInput.isBlank()
+        serviceIdInput == null || serviceIdInput.trim().isEmpty()
             ? props.getLogs().getDefaultService().trim()
             : serviceIdInput.trim();
     LogAgentProperties.ServiceLogs sl = map.get(id);
@@ -130,11 +165,11 @@ public final class LogFileSupport {
     sb.append("多服务日志配置。工具调用时须指定 serviceId（与下列键一致）；传空串等同 defaultService=\"")
         .append(props.getLogs().getDefaultService())
         .append("\"。\n");
-    for (var e : map.entrySet()) {
+    for (Map.Entry<String, LogAgentProperties.ServiceLogs> e : map.entrySet()) {
       String key = e.getKey();
       LogAgentProperties.ServiceLogs sl = e.getValue();
       sb.append("- serviceId=").append(key);
-      if (sl.getDisplayName() != null && !sl.getDisplayName().isBlank()) {
+      if (sl.getDisplayName() != null && !sl.getDisplayName().trim().isEmpty()) {
         sb.append(" （").append(sl.getDisplayName()).append("）");
       }
       try {
@@ -172,14 +207,14 @@ public final class LogFileSupport {
       throw new IllegalArgumentException(
           "禁止读取日历根目录外的路径。日历根: " + root + "；请求: " + abs);
     }
-    var prefixes = props.getLogs().getAllowedReadPathPrefixes();
+    List<String> prefixes = props.getLogs().getAllowedReadPathPrefixes();
     if (prefixes != null && !prefixes.isEmpty()) {
       boolean ok = false;
       for (String ex : prefixes) {
-        if (ex == null || ex.isBlank()) {
+        if (ex == null || ex.trim().isEmpty()) {
           continue;
         }
-        Path pfx = Path.of(ex.trim()).toAbsolutePath().normalize();
+        Path pfx = java.nio.file.Paths.get(ex.trim()).toAbsolutePath().normalize();
         if (abs.startsWith(pfx)) {
           ok = true;
           break;
@@ -196,12 +231,12 @@ public final class LogFileSupport {
    * 将 fileName 解析为日历根下的绝对路径；相对路径相对日历根，绝对路径必须在日历根之下（防目录穿越逃逸）。
    */
   public Path resolvePathUnderCalendarRoot(String fileName, ResolvedPaths r) {
-    if (fileName == null || fileName.isBlank()) {
+    if (fileName == null || fileName.trim().isEmpty()) {
       throw new IllegalArgumentException("fileName 不能为空");
     }
     Path root = r.calendarRoot().toAbsolutePath().normalize();
     String fn = fileName.trim().replace('\\', '/');
-    Path candidate = Path.of(fn);
+    Path candidate = java.nio.file.Paths.get(fn);
     Path abs = candidate.isAbsolute() ? candidate.normalize() : root.resolve(candidate).normalize();
     if (!abs.startsWith(root)) {
       throw new IllegalArgumentException(
@@ -224,7 +259,7 @@ public final class LogFileSupport {
     } else {
       long size = Files.size(file);
       if (size == 0) {
-        rawLines = List.of();
+        rawLines = Collections.emptyList();
       } else if (size > Integer.MAX_VALUE - 16 || size > TAIL_FROM_END_MAX_FILE_BYTES) {
         rawLines = tailLinesSequential(file, n);
       } else {
@@ -243,7 +278,7 @@ public final class LogFileSupport {
     }
     List<String> rawLines = new ArrayList<>();
     try (Stream<String> stream = openLines(file)) {
-      var it = stream.iterator();
+      java.util.Iterator<String> it = stream.iterator();
       int c = 0;
       while (it.hasNext() && c < n) {
         rawLines.add(it.next());
@@ -358,7 +393,8 @@ public final class LogFileSupport {
       int linesAfter)
       throws IOException {
     ResolvedPaths r = resolvePaths(serviceId);
-    String tr = timeRangeSubstring == null || timeRangeSubstring.isBlank() ? null : timeRangeSubstring;
+    String tr =
+        timeRangeSubstring == null || timeRangeSubstring.trim().isEmpty() ? null : timeRangeSubstring;
     return searchInFile(
         r,
         r.currentLogFile(),
@@ -374,7 +410,7 @@ public final class LogFileSupport {
    */
   public String searchCurrentRegex(String serviceId, String regexPattern, int linesBefore, int linesAfter)
       throws IOException {
-    if (regexPattern == null || regexPattern.isBlank()) {
+    if (regexPattern == null || regexPattern.trim().isEmpty()) {
       return "错误：regexPattern 不能为空";
     }
     int maxLen = props.getLogs().getMaxRegexPatternLength();
@@ -402,7 +438,7 @@ public final class LogFileSupport {
 
   public String searchNamedLog(String serviceId, String fileName, String keyword, String timeRange)
       throws IOException {
-    if (fileName == null || fileName.isBlank()) {
+    if (fileName == null || fileName.trim().isEmpty()) {
       return "错误：fileName 不能为空";
     }
     ResolvedPaths r = resolvePaths(serviceId);
@@ -410,7 +446,7 @@ public final class LogFileSupport {
     if (!Files.exists(p)) {
       return "错误：找不到日志文件: " + p;
     }
-    String range = timeRange == null || timeRange.isBlank() ? null : timeRange;
+    String range = timeRange == null || timeRange.trim().isEmpty() ? null : timeRange;
     return searchInFile(
         r,
         p,
@@ -428,8 +464,7 @@ public final class LogFileSupport {
     if (tailOut.startsWith("错误：")) {
       return tailOut;
     }
-    List<String> lines =
-        tailOut.lines().dropWhile(l -> !l.equals("---")).skip(1).toList();
+    List<String> lines = linesAfterMarker(tailOut, "---");
     Pattern levelPat =
         Pattern.compile(
             "\\b(TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|SEVERE)\\b",
@@ -441,24 +476,25 @@ public final class LogFileSupport {
     }
     int scanned = 0;
     for (String line : lines) {
-      if (line.isBlank()) {
+      if (line.trim().isEmpty()) {
         continue;
       }
       scanned++;
-      var m = levelPat.matcher(line);
+      Matcher m = levelPat.matcher(line);
       if (m.find()) {
         String lv = m.group(1).toUpperCase(Locale.ROOT);
         if ("WARNING".equals(lv)) {
           lv = "WARN";
         }
-        counts.merge(lv, 1, Integer::sum);
+        Integer current = counts.get(lv);
+        counts.put(lv, current == null ? 1 : current + 1);
       }
     }
     StringBuilder sb = new StringBuilder();
     sb.append("serviceId: ").append(r.serviceKey()).append('\n');
     sb.append("文件: ").append(r.currentLogFile()).append('\n');
     sb.append("基于尾部窗口扫描行数: ").append(scanned).append("（启发式匹配级别关键字）\n");
-    for (var e : counts.entrySet()) {
+    for (Map.Entry<String, Integer> e : counts.entrySet()) {
       if (e.getValue() > 0) {
         sb.append("- ").append(e.getKey()).append(": ").append(e.getValue()).append('\n');
       }
@@ -478,7 +514,7 @@ public final class LogFileSupport {
       return "错误：文件不存在: " + p;
     }
     long size = Files.size(p);
-    var lmt = Files.getLastModifiedTime(p);
+    java.nio.file.attribute.FileTime lmt = Files.getLastModifiedTime(p);
     boolean gz = p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
     StringBuilder sb = new StringBuilder();
     sb.append("serviceId: ").append(r.serviceKey()).append('\n');
@@ -494,7 +530,7 @@ public final class LogFileSupport {
    */
   public String searchJsonFieldInLogFile(
       String serviceId, String fileName, String fieldPath, String valueContains) throws IOException {
-    if (fieldPath == null || fieldPath.isBlank()) {
+    if (fieldPath == null || fieldPath.trim().isEmpty()) {
       return "错误：fieldPath 不能为空";
     }
     ResolvedPaths r = resolvePaths(serviceId);
@@ -504,18 +540,18 @@ public final class LogFileSupport {
       return "错误：文件不存在: " + p;
     }
     String needle =
-        valueContains == null || valueContains.isBlank() ? null : valueContains;
+        valueContains == null || valueContains.trim().isEmpty() ? null : valueContains;
     int maxLines = Math.max(1, props.getLogs().getMaxJsonScanLines());
     String[] parts = fieldPath.trim().split("\\.");
     List<String> hits = new ArrayList<>();
     int maxSeg = Math.max(1, props.getLogs().getMaxMatchSegments());
     int lineNo = 0;
     try (Stream<String> stream = openLines(p)) {
-      var it = stream.iterator();
+      java.util.Iterator<String> it = stream.iterator();
       while (it.hasNext() && lineNo < maxLines && hits.size() < maxSeg) {
         String raw = it.next();
         lineNo++;
-        String t = raw.strip();
+        String t = raw.trim();
         if (!t.startsWith("{") && !t.startsWith("[")) {
           continue;
         }
@@ -574,8 +610,7 @@ public final class LogFileSupport {
     if (tailOut.startsWith("错误：")) {
       return tailOut;
     }
-    List<String> lines =
-        tailOut.lines().dropWhile(l -> !l.equals("---")).skip(1).toList();
+    List<String> lines = linesAfterMarker(tailOut, "---");
     Pattern excStart =
         Pattern.compile(
             "Exception|Error:\\s|Caused by:|\\tat\\s+\\S+\\.(?:\\w+\\.)+\\w+\\s*\\(");
@@ -594,7 +629,7 @@ public final class LogFileSupport {
         cur = new StringBuilder();
         cur.append(sanitizer.line(line, props.getLogs().getMaxLineLength())).append('\n');
       } else if (cur != null) {
-        if (line.startsWith("\tat ") || line.strip().startsWith("... ")) {
+        if (line.startsWith("\tat ") || line.trim().startsWith("... ")) {
           cur.append(sanitizer.line(line, props.getLogs().getMaxLineLength())).append('\n');
         } else if (cur.length() > 2000) {
           blocks.add(cur.toString());
@@ -602,7 +637,7 @@ public final class LogFileSupport {
             break;
           }
           cur = null;
-        } else if (!line.isBlank()) {
+        } else if (!line.trim().isEmpty()) {
           cur.append(sanitizer.line(line, props.getLogs().getMaxLineLength())).append('\n');
         }
       }
@@ -698,7 +733,7 @@ public final class LogFileSupport {
       String timeRangeSubstring,
       String serviceKeyLabel)
       throws IOException {
-    if (keyword == null || keyword.isBlank()) {
+    if (keyword == null || keyword.trim().isEmpty()) {
       return "错误：keyword 不能为空";
     }
     Pattern kwPattern =
@@ -742,7 +777,7 @@ public final class LogFileSupport {
     int segments = 0;
 
     try (Stream<String> stream = openLines(file)) {
-      var it = stream.iterator();
+      java.util.Iterator<String> it = stream.iterator();
       while (it.hasNext() && segments < maxSeg) {
         String raw = it.next();
         boolean match = lineMatcher.test(raw);
@@ -815,6 +850,24 @@ public final class LogFileSupport {
     } catch (MalformedInputException e) {
       return Files.lines(file, Charset.forName("GBK"));
     }
+  }
+
+  private static List<String> linesAfterMarker(String text, String marker) {
+    List<String> result = new ArrayList<>();
+    if (text == null || text.isEmpty()) {
+      return result;
+    }
+    String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+    String[] lines = normalized.split("\n", -1);
+    boolean collect = false;
+    for (String line : lines) {
+      if (collect) {
+        result.add(line);
+      } else if (marker.equals(line)) {
+        collect = true;
+      }
+    }
+    return result;
   }
 
   private String trimToBudget(String s) {

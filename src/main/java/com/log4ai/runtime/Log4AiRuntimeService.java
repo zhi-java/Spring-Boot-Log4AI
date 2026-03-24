@@ -3,6 +3,7 @@ package com.log4ai.runtime;
 import com.log4ai.agent.LogTools;
 import com.log4ai.config.LogAgentProperties;
 import com.log4ai.support.Log4AiSystemLogPaths;
+import com.log4ai.support.LogFileSupport;
 import com.log4ai.web.dto.LogAgentSettingsDtos.LogServiceRow;
 import com.log4ai.web.dto.LogAgentSettingsDtos.LogsSettingsRequest;
 import com.log4ai.web.dto.LogAgentSettingsDtos.LogsSettingsView;
@@ -12,8 +13,11 @@ import com.log4ai.web.dto.LogAgentSettingsDtos.SettingsResponse;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +56,7 @@ public class Log4AiRuntimeService {
     this.holder = holder;
     this.persistence = persistence;
     this.systemLogPaths = systemLogPaths;
-    this.workspace = Path.of(userDir);
+    this.workspace = Paths.get(userDir);
     this.streamingStackPresent = streamingAssistantOnClasspath();
   }
 
@@ -68,10 +72,12 @@ public class Log4AiRuntimeService {
   /** 启动或保存后：按当前 props 重建同步 / 流式 Agent（流式依赖配置与类路径）。 */
   public void rebuildAssistants() {
     synchronized (rebuildLock) {
-      var syncModel = Log4AiAssistantBuilder.buildChatModel(props);
+      dev.langchain4j.model.openai.OpenAiChatModel syncModel =
+          Log4AiAssistantBuilder.buildChatModel(props);
       holder.setSync(Log4AiAssistantBuilder.buildSyncAssistant(syncModel, tools, memoryProvider));
       if (streamingStackPresent && props.getStreaming().isEnabled()) {
-        var streamModel = Log4AiAssistantBuilder.buildStreamingModel(props);
+        dev.langchain4j.model.openai.OpenAiStreamingChatModel streamModel =
+            Log4AiAssistantBuilder.buildStreamingModel(props);
         holder.setStreaming(
             Log4AiAssistantBuilder.buildStreamingAssistant(streamModel, tools, memoryProvider));
       }
@@ -79,8 +85,8 @@ public class Log4AiRuntimeService {
   }
 
   public SettingsResponse snapshot() {
-    var llm = props.getLlm();
-    boolean keySet = llm.getApiKey() != null && !llm.getApiKey().isBlank();
+    LogAgentProperties.Llm llm = props.getLlm();
+    boolean keySet = llm.getApiKey() != null && !llm.getApiKey().trim().isEmpty();
     LlmSettingsView lv =
         new LlmSettingsView(
             keySet,
@@ -88,23 +94,23 @@ public class Log4AiRuntimeService {
             llm.getModelName(),
             llm.getTemperature(),
             timeoutSecondsForView(llm));
-    var sys = systemLogPaths.resolve(workspace);
-    var reg = props.getRegistry();
+    LogFileSupport.ResolvedPaths sys = systemLogPaths.resolve(workspace);
+    LogAgentProperties.Registry reg = props.getRegistry();
+    List<LogServiceRow> serviceRows = new ArrayList<>();
+    for (Map.Entry<String, LogAgentProperties.ServiceLogs> e : props.getLogs().getServices().entrySet()) {
+      LogAgentProperties.ServiceLogs sl = e.getValue();
+      serviceRows.add(
+          new LogServiceRow(
+              e.getKey(),
+              sl.getDisplayName(),
+              sl.getLogPath() != null ? sl.getLogPath().toString() : ""));
+    }
     LogsSettingsView gv =
         new LogsSettingsView(
             sys.currentLogFile().toString(),
             sys.calendarRoot().toString(),
             props.getLogs().getDefaultService(),
-            props.getLogs().getServices().entrySet().stream()
-                .map(
-                    e -> {
-                      var sl = e.getValue();
-                      return new LogServiceRow(
-                          e.getKey(),
-                          sl.getDisplayName(),
-                          sl.getLogPath() != null ? sl.getLogPath().toString() : "");
-                    })
-                .toList(),
+            serviceRows,
             persistence.filePath().toString(),
             reg.isEnabled(),
             !reg.isDisableUiLogPaths());
@@ -113,12 +119,12 @@ public class Log4AiRuntimeService {
 
   /** 与 {@link Log4AiSettingsPersistence#fromProps} 一致，避免配置/持久化后出现 null 导致 NPE。 */
   private static int timeoutSecondsForView(LogAgentProperties.Llm llm) {
-    var t = llm.getTimeout();
+    Duration t = llm.getTimeout();
     if (t == null) {
       return 120;
     }
-    long sec = t.toSeconds();
-    return (int) Math.min(Integer.MAX_VALUE, Math.max(1, sec));
+    long sec = t.getSeconds();
+    return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, sec));
   }
 
   public void applyLlm(LlmSettingsRequest req) throws IOException {
@@ -126,17 +132,17 @@ public class Log4AiRuntimeService {
       if (req.apiKey() != null) {
         props.getLlm().setApiKey(req.apiKey());
       }
-      if (req.baseUrl() != null && !req.baseUrl().isBlank()) {
+      if (req.baseUrl() != null && !req.baseUrl().trim().isEmpty()) {
         props.getLlm().setBaseUrl(req.baseUrl().trim());
       }
-      if (req.modelName() != null && !req.modelName().isBlank()) {
+      if (req.modelName() != null && !req.modelName().trim().isEmpty()) {
         props.getLlm().setModelName(req.modelName().trim());
       }
       if (req.temperature() != null) {
         props.getLlm().setTemperature(req.temperature());
       }
       if (req.timeoutSeconds() != null && req.timeoutSeconds() > 0) {
-        props.getLlm().setTimeout(Duration.ofSeconds(req.timeoutSeconds()));
+        props.getLlm().setTimeout(Duration.ofSeconds(req.timeoutSeconds().longValue()));
       }
       rebuildAssistants();
       persistence.save(props);
@@ -151,25 +157,25 @@ public class Log4AiRuntimeService {
                 + "请由各业务应用使用注册接口上报路径，或临时关闭该选项。");
       }
       String def =
-          req.defaultService() == null || req.defaultService().isBlank()
+          req.defaultService() == null || req.defaultService().trim().isEmpty()
               ? "default"
               : req.defaultService().trim();
       props.getLogs().setDefaultService(def);
       Map<String, LogAgentProperties.ServiceLogs> map = new LinkedHashMap<>();
       if (req.services() != null) {
         for (LogServiceRow row : req.services()) {
-          if (row.id() == null || row.id().isBlank()) {
+          if (row.id() == null || row.id().trim().isEmpty()) {
             continue;
           }
           String id = row.id().trim();
-          if (row.logPath() == null || row.logPath().isBlank()) {
+          if (row.logPath() == null || row.logPath().trim().isEmpty()) {
             throw new IllegalArgumentException("服务 \"" + id + "\" 须填写日志路径（文件或目录）");
           }
           LogAgentProperties.ServiceLogs sl = new LogAgentProperties.ServiceLogs();
           if (row.displayName() != null) {
             sl.setDisplayName(row.displayName());
           }
-          sl.setLogPath(Path.of(row.logPath().trim()));
+          sl.setLogPath(Paths.get(row.logPath().trim()));
           map.put(id, sl);
         }
       }
@@ -192,13 +198,13 @@ public class Log4AiRuntimeService {
    */
   public void registerOrUpdateService(String serviceId, String displayName, String logPathStr)
       throws IOException {
-    if (serviceId == null || serviceId.isBlank()) {
+    if (serviceId == null || serviceId.trim().isEmpty()) {
       throw new IllegalArgumentException("serviceId 不能为空");
     }
-    if (logPathStr == null || logPathStr.isBlank()) {
+    if (logPathStr == null || logPathStr.trim().isEmpty()) {
       throw new IllegalArgumentException("logPath 不能为空");
     }
-    Path raw = Path.of(logPathStr.trim());
+    Path raw = Paths.get(logPathStr.trim());
     Path normalized = raw.isAbsolute() ? raw.normalize() : workspace.resolve(raw).normalize();
     Log4AiRegistryPathValidator.validateAllowedPrefix(normalized, props);
     synchronized (rebuildLock) {
@@ -210,7 +216,7 @@ public class Log4AiRuntimeService {
       map.put(serviceId.trim(), sl);
       props.getLogs().setServices(map);
       String def = props.getLogs().getDefaultService();
-      if (!map.isEmpty() && (def == null || def.isBlank() || !map.containsKey(def))) {
+      if (!map.isEmpty() && (def == null || def.trim().isEmpty() || !map.containsKey(def))) {
         String fallback = map.keySet().iterator().next();
         log.warn(
             "defaultService=\"{}\" 不在已注册服务 id 列表中，已自动改为 \"{}\"",
@@ -224,7 +230,7 @@ public class Log4AiRuntimeService {
 
   /** 注销某 serviceId（注册接口调用）。 */
   public void removeRegisteredService(String serviceId) throws IOException {
-    if (serviceId == null || serviceId.isBlank()) {
+    if (serviceId == null || serviceId.trim().isEmpty()) {
       throw new IllegalArgumentException("serviceId 不能为空");
     }
     synchronized (rebuildLock) {
@@ -236,7 +242,7 @@ public class Log4AiRuntimeService {
       props.getLogs().setServices(map);
       if (!map.isEmpty()) {
         String def = props.getLogs().getDefaultService();
-        if (def != null && !def.isBlank() && !map.containsKey(def)) {
+        if (def != null && !def.trim().isEmpty() && !map.containsKey(def)) {
           props.getLogs().setDefaultService(map.keySet().iterator().next());
         }
       }

@@ -2,6 +2,7 @@ package com.log4ai.runtime;
 
 import com.log4ai.config.LogAgentProperties;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 /** 校验注册接口上报的日志路径是否落在允许的前缀下。 */
@@ -16,10 +17,10 @@ public final class Log4AiRegistryPathValidator {
     }
     Path abs = absoluteNormalized.toAbsolutePath().normalize();
     for (String prefix : prefixes) {
-      if (prefix == null || prefix.isBlank()) {
+      if (prefix == null || prefix.trim().isEmpty()) {
         continue;
       }
-      Path p = Path.of(prefix.trim()).toAbsolutePath().normalize();
+      Path p = Paths.get(prefix.trim()).toAbsolutePath().normalize();
       if (abs.startsWith(p)) {
         return;
       }

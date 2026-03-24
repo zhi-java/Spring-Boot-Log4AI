@@ -5,6 +5,7 @@ import com.log4ai.web.dto.LogAgentSettingsDtos.LogsSettingsRequest;
 import com.log4ai.web.dto.LogAgentSettingsDtos.LlmSettingsRequest;
 import com.log4ai.web.dto.LogAgentSettingsDtos.SettingsResponse;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -80,8 +81,11 @@ public class LogAgentSettingsController {
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<Map<String, String>> unreadable(HttpMessageNotReadableException ex) {
-    Throwable c = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause() : ex;
+    Throwable cause = ex.getMostSpecificCause();
+    Throwable c = cause != null ? cause : ex;
     String msg = c.getMessage() == null ? "请求体不是合法 JSON 或与字段类型不匹配" : c.getMessage();
-    return ResponseEntity.badRequest().body(Map.of("message", msg));
+    Map<String, String> body = new HashMap<>();
+    body.put("message", msg);
+    return ResponseEntity.badRequest().body(body);
   }
 }

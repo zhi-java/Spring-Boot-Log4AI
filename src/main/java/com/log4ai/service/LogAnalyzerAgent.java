@@ -22,7 +22,7 @@ public class LogAnalyzerAgent {
    */
   public String ask(String sessionId, String userMessage) {
     String sid =
-        (sessionId == null || sessionId.isBlank()) ? "default" : sessionId.trim();
+        (sessionId == null || sessionId.trim().isEmpty()) ? "default" : sessionId.trim();
     return assistant.chat(sid, userMessage);
   }
 }

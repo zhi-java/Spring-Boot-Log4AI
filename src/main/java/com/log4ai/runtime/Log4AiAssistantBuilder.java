@@ -15,8 +15,8 @@ public final class Log4AiAssistantBuilder {
   private Log4AiAssistantBuilder() {}
 
   public static OpenAiChatModel buildChatModel(LogAgentProperties props) {
-    var llm = props.getLlm();
-    var b =
+    LogAgentProperties.Llm llm = props.getLlm();
+    OpenAiChatModel.OpenAiChatModelBuilder b =
         OpenAiChatModel.builder()
             .apiKey(llm.getApiKey())
             .baseUrl(llm.getBaseUrl())
@@ -29,8 +29,8 @@ public final class Log4AiAssistantBuilder {
   }
 
   public static OpenAiStreamingChatModel buildStreamingModel(LogAgentProperties props) {
-    var llm = props.getLlm();
-    var b =
+    LogAgentProperties.Llm llm = props.getLlm();
+    OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder b =
         OpenAiStreamingChatModel.builder()
             .apiKey(llm.getApiKey())
             .baseUrl(llm.getBaseUrl())

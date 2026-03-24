@@ -1,6 +1,6 @@
 package com.log4ai.autoconfigure;
 
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -90,7 +90,7 @@ public class Log4AiAutoConfiguration {
       LogContentSanitizer sanitizer,
       @Value("${user.dir}") String userDir,
       Log4AiSystemLogPaths systemLogPaths) {
-    return new LogFileSupport(props, sanitizer, Path.of(userDir), systemLogPaths);
+    return new LogFileSupport(props, sanitizer, Paths.get(userDir), systemLogPaths);
   }
 
   @Bean

@@ -13,6 +13,7 @@
 - [运行模式：组件嵌入 vs 独立 JAR](#运行模式组件嵌入-vs-独立-jar)
 - [Docker 部署（standalone）](#docker-部署standalone)
 - [公共镜像库发布方案（文档）](docs/docker-registry-publish.md)
+- [Maven Central 发布（文档）](docs/maven-central-publish.md)
 - [技术架构与用户执行链路（文档）](docs/technical-architecture-user-flow.md)
 - [内置控制台与静态页](#内置控制台与静态页)
 - [生产环境：日志服务注册（可选）](#生产环境日志服务注册可选)
@@ -32,8 +33,8 @@
 
 | 项 | 说明 |
 |----|------|
-| **JDK** | **17+**（本仓库 `maven-enforcer-plugin` 会校验；与 Spring Boot 3.3 / LangChain4j 对齐） |
-| **Spring Boot** | **3.x**（建议与本仓库 `pom.xml` 中 `spring-boot.version` 同主版本，避免传递依赖冲突） |
+| **JDK** | **1.8+**（当前 `feat/jdk8-compat` 兼容线已按 JDK 8 校验与编译） |
+| **Spring Boot** | **2.7.x**（JDK 8 兼容线基于 Spring Boot 2.7 / LangChain4j 0.30.0） |
 | **LLM** | 可访问的 HTTP 接口：OpenAI 或 **OpenAI 兼容网关**（通义、DeepSeek、私有化 vLLM 等） |
 | **Web（可选）** | 需要使用内置控制台或 `/log4ai/*` REST/SSE 时，需引入 **`spring-boot-starter-web`**（本库中该依赖为 `optional`，不会强行拉入） |
 
@@ -49,7 +50,9 @@
 mvn clean install
 ```
 
-发布后可将构件部署到 **Nexus / Artifactory**，业务工程改为从私服解析 `com.log4ai:spring-boot-log4ai`。
+发布后可将构件部署到 **Nexus / Artifactory**，业务工程改为从私服解析 **`io.github.ml4497658:spring-boot-log4ai`**。
+
+若需发布到 **Maven Central**，见 [docs/maven-central-publish.md](docs/maven-central-publish.md)（`mvn -Prelease-central deploy`，并先在 Sonatype 完成命名空间与 GPG）。**`-Prelease-central` 不会打 fat `*-standalone.jar`**（减小上传体积）；可执行包仍用 **`mvn package`** 不带该 profile。
 
 ---
 
@@ -57,11 +60,13 @@ mvn clean install
 
 ```xml
 <dependency>
-  <groupId>com.log4ai</groupId>
+  <groupId>io.github.ml4497658</groupId>
   <artifactId>spring-boot-log4ai</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>jdk8-0.2.0</version>
 </dependency>
 ```
+
+**Maven 与包名**：`groupId` 使用 Central 已验证命名空间 **`io.github.ml4497658`**；库内 Java 包仍为 **`com.log4ai.*`**，业务工程只需改依赖坐标，**不必**改 `import`。
 
 **同时**若需使用内置页面与 HTTP 接口，请确保工程已依赖 **Spring Web**（多数 Spring Boot 工程已有）：
 
@@ -194,7 +199,7 @@ log4ai:
 ```bash
 mvn -DskipTests package
 export LLM_API_KEY=sk-...
-java -jar target/spring-boot-log4ai-0.1.0-SNAPSHOT-standalone.jar
+java -jar target/spring-boot-log4ai-jdk8-0.2.0-standalone.jar
 ```
 
 主类为 `com.log4ai.standalone.Log4AiStandaloneApplication`，会加载 **`log4ai-server.yml`** 示例配置；生产请用外部 `application.yml`、环境变量或命令行覆盖。
@@ -246,12 +251,12 @@ docker run --rm -p 8080:8080 \
 |------|------|
 | **本机构建** | 在装有 Docker 的机器上 **`git clone`**（或拷贝源码）后执行 **`mvn -DskipTests package`**，再 **`docker build -t log4ai-server:local .`** 或使用 **`docker-compose.example.yml`** 执行 **`docker compose -f docker-compose.example.yml up --build`**，镜像只在**本机**生成。 |
 | **不跑 Docker** | **`mvn -DskipTests package`**，用 **`target/spring-boot-log4ai-*-standalone.jar`** 执行 **`java -jar ...`**（见 [步骤 8](#步骤-8独立可执行-jar可选)），无需任何镜像库。 |
-| **业务工程依赖** | **`mvn install`** 后，在其它工程的 `pom.xml` 里依赖 **`com.log4ai:spring-boot-log4ai`**，同样**不需要**镜像。 |
+| **业务工程依赖** | **`mvn install`** 后，在其它工程的 `pom.xml` 里依赖 **`io.github.ml4497658:spring-boot-log4ai`**，同样**不需要**镜像。 |
 | **离线/内网搬运** | 在一台能构建的机器上 **`docker save log4ai-server:local -o log4ai.tar`**，到目标机 **`docker load -i log4ai.tar`**；或只拷贝 **standalone JAR** + 配置文件即可。 |
 
 若将来需要团队统一拉取，再在 CI 中 **`docker push`** 到公司 Harbor / 阿里云 ACR 即可，与当前用法无关。
 
-**推送到公共镜像库**：仓库已含 **[`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)**（推送 `v*.*.*` 标签或手动运行 Workflow 即构建并推送到 **GHCR**）。详细步骤与 Docker Hub 方案见 **[docs/docker-registry-publish.md](docs/docker-registry-publish.md)**。
+**推送到公共镜像库**：仓库已含 **[`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)**（推送 `jdk8-*` 标签或手动运行 Workflow 即构建并推送到 **GHCR**）。详细步骤与 Docker Hub 方案见 **[docs/docker-registry-publish.md](docs/docker-registry-publish.md)**。
 
 ### 控制台设置持久化（可选）
 
@@ -413,7 +418,7 @@ sequenceDiagram
 | 工作流 | 触发 | 作用 |
 |--------|------|------|
 | [**`ci.yml`**](.github/workflows/ci.yml) | 推送到 **`main` / `master`** 或针对这两支的 **Pull Request** | JDK 17 下执行 **`mvn -B verify`**，并将 **`spring-boot-log4ai-*-standalone.jar`** 作为 **Artifact** 上传（便于下载、未推镜像也能拿可执行包）。 |
-| [**`docker-publish.yml`**](.github/workflows/docker-publish.yml) | 推送 **`v*.*.*`** 标签，或 **Actions → 手动 Run workflow** | 构建 Docker 镜像并推送到 **GHCR**（`ghcr.io/<owner>/log4ai-server`）。 |
+| [**`docker-publish.yml`**](.github/workflows/docker-publish.yml) | 推送 **`jdk8-*`** 标签，或 **Actions → 手动 Run workflow** | 构建 Docker 镜像并推送到 **GHCR**（`ghcr.io/<owner>/log4ai-server`）。 |
 
 **启用前**：在仓库 **Settings → Actions → General → Workflow permissions** 中，若需 **推送 GHCR**，请勾选 **Read and write permissions**（或授予 `GITHUB_TOKEN` 写 `packages`）。仅跑 **CI** 时默认只读权限即可。
 
@@ -452,4 +457,4 @@ curl -s -X POST http://localhost:8080/log4ai/chat ^
 
 ## License
 
-按团队需要自行补充（本项目示例未附许可证文件）。
+本仓库根目录 **`LICENSE`** 为 **Apache License 2.0**（与 `pom.xml` 中 `<licenses>` 一致）。若团队采用其他许可证，请同步修改 `LICENSE` 与 `pom.xml`。

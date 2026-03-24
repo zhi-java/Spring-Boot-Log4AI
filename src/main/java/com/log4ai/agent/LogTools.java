@@ -68,7 +68,7 @@ public class LogTools {
       @P("业务服务 ID；未注册多服务时传空字符串") String serviceId,
       @P("要读取的末尾行数，例如 50～200") int lineCount) {
     try {
-      var r = files.resolvePaths(normServiceId(serviceId));
+      LogFileSupport.ResolvedPaths r = files.resolvePaths(normServiceId(serviceId));
       return files.tail(r.currentLogFile(), lineCount, r);
     } catch (IllegalArgumentException e) {
       return "读取活动日志末尾未能执行: " + e.getMessage() + " 建议先查看当前已接入的日志服务说明。";
@@ -107,7 +107,7 @@ public class LogTools {
       @P("关键字") String keyword,
       @P("可选时间子串过滤，如 20:15 或 08:0；不需要时传空字符串") String timeRange) {
     try {
-      String tr = timeRange == null || timeRange.isBlank() ? null : timeRange;
+      String tr = timeRange == null || timeRange.trim().isEmpty() ? null : timeRange;
       return files.searchNamedLog(normServiceId(serviceId), fileName, keyword, tr);
     } catch (IllegalArgumentException e) {
       return "日历目录内文件检索未能执行: " + e.getMessage() + " 建议先查看当前已接入的日志服务说明。";
@@ -125,7 +125,7 @@ public class LogTools {
       @P("业务服务 ID；未注册多服务时传空字符串") String serviceId,
       @P("开头行数，例如 30～100") int lineCount) {
     try {
-      var r = files.resolvePaths(normServiceId(serviceId));
+      LogFileSupport.ResolvedPaths r = files.resolvePaths(normServiceId(serviceId));
       return files.head(r.currentLogFile(), lineCount, r);
     } catch (IllegalArgumentException e) {
       return "读取活动日志开头未能执行: " + e.getMessage() + " 建议先查看当前已接入的日志服务说明。";

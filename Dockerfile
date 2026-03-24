@@ -6,7 +6,7 @@
 # 进程默认以 root 运行（见 docker-entrypoint.sh），便于挂载目录权限与业务日志属主不一致时的只读分析。
 # 若需非 root，可在 compose 中 user: "1000:1000" 并保证日志目录对 uid 1000 可读。
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:8-jre
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*

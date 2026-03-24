@@ -2,6 +2,7 @@ package com.log4ai.support;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.springframework.beans.factory.annotation.Value;
 
 /**
@@ -34,11 +35,11 @@ public final class Log4AiSystemLogPaths {
 
   private Path resolveCurrentLogFile(Path workspaceRoot) {
     if (!loggingFileName.isEmpty()) {
-      Path p = Path.of(loggingFileName);
+      Path p = Paths.get(loggingFileName);
       return p.isAbsolute() ? p : workspaceRoot.resolve(p).normalize();
     }
     if (!loggingFilePath.isEmpty()) {
-      Path dir = Path.of(loggingFilePath);
+      Path dir = Paths.get(loggingFilePath);
       if (!dir.isAbsolute()) {
         dir = workspaceRoot.resolve(dir);
       }

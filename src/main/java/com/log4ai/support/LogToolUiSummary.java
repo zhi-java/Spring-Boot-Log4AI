@@ -51,28 +51,39 @@ public final class LogToolUiSummary {
       return "serviceId 无效，需先确认接入配置";
     }
 
-    return switch (name) {
-      case "listLogServices" -> summarizeList(r);
-      case "searchCurrentLog",
-          "searchCurrentLogWithTimeFilter",
-          "searchCurrentLogRegex" -> summarizeSearch(r, "活动日志");
-      case "searchLogFile" -> summarizeSearch(r, "日历目录");
-      case "tailCurrentLog" -> summarizeTail(r);
-      case "headCurrentLog" -> summarizeHead(r);
-      case "listHistoricalLogs" -> summarizeListHist(r);
-      case "summarizeRecentLogLevels" -> summarizeLevels(r);
-      case "getLogFileMeta" -> "已读取文件元信息";
-      case "searchJsonFieldInLogFile" -> summarizeJsonSearch(r);
-      case "findExceptionBlocksInRecentLog" -> summarizeExceptionBlocks(r);
-      default -> fallback(r);
-    };
+    switch (name) {
+      case "listLogServices":
+        return summarizeList(r);
+      case "searchCurrentLog":
+      case "searchCurrentLogWithTimeFilter":
+      case "searchCurrentLogRegex":
+        return summarizeSearch(r, "活动日志");
+      case "searchLogFile":
+        return summarizeSearch(r, "日历目录");
+      case "tailCurrentLog":
+        return summarizeTail(r);
+      case "headCurrentLog":
+        return summarizeHead(r);
+      case "listHistoricalLogs":
+        return summarizeListHist(r);
+      case "summarizeRecentLogLevels":
+        return summarizeLevels(r);
+      case "getLogFileMeta":
+        return "已读取文件元信息";
+      case "searchJsonFieldInLogFile":
+        return summarizeJsonSearch(r);
+      case "findExceptionBlocksInRecentLog":
+        return summarizeExceptionBlocks(r);
+      default:
+        return fallback(r);
+    }
   }
 
   private static String summarizeList(String r) {
     if (r.contains("单实例")) {
       return "当前为单实例日志接入";
     }
-    long n = r.lines().map(String::strip).filter(l -> l.startsWith("- serviceId=")).count();
+    long n = countLinesWithPrefix(r, "- serviceId=");
     if (n > 0) {
       return "已加载 " + n + " 个服务的接入配置";
     }
@@ -93,7 +104,7 @@ public final class LogToolUiSummary {
     }
     Matcher km = KEYWORD_LINE.matcher(r);
     if (km.find()) {
-      String kw = km.group(1).strip();
+      String kw = km.group(1).trim();
       if (kw.length() > 18) {
         kw = kw.substring(0, 15) + "...";
       }
@@ -161,15 +172,34 @@ public final class LogToolUiSummary {
   }
 
   private static String fallback(String r) {
-    String first =
-        r.lines()
-            .map(String::strip)
-            .filter(l -> !l.isEmpty())
-            .findFirst()
-            .orElse("");
+    String first = firstNonEmptyLine(r);
     if (first.length() > 42) {
       first = first.substring(0, 39) + "...";
     }
     return first.isEmpty() ? "已完成" : first;
+  }
+
+  private static long countLinesWithPrefix(String text, String prefix) {
+    long count = 0;
+    String[] lines = text.split("\\r?\\n");
+    for (String line : lines) {
+      if (line != null && line.trim().startsWith(prefix)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private static String firstNonEmptyLine(String text) {
+    String[] lines = text.split("\\r?\\n");
+    for (String line : lines) {
+      if (line != null) {
+        String trimmed = line.trim();
+        if (!trimmed.isEmpty()) {
+          return trimmed;
+        }
+      }
+    }
+    return "";
   }
 }

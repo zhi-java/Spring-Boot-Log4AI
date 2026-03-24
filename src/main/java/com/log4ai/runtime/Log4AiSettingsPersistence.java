@@ -7,6 +7,7 @@ import com.log4ai.config.LogAgentProperties;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,7 +31,7 @@ public class Log4AiSettingsPersistence {
       new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
   public Log4AiSettingsPersistence(@Value("${user.dir}") String userDir) {
-    this.file = Path.of(userDir).resolve(".log4ai").resolve("settings.json").normalize();
+    this.file = Paths.get(userDir).resolve(".log4ai").resolve("settings.json").normalize();
   }
 
   public Path filePath() {
@@ -66,26 +67,26 @@ public class Log4AiSettingsPersistence {
       return;
     }
     if (root.llm != null) {
-      var L = root.llm;
+      StoredLlm L = root.llm;
       if (L.apiKey != null) {
         props.getLlm().setApiKey(L.apiKey);
       }
-      if (L.baseUrl != null && !L.baseUrl.isBlank()) {
+      if (L.baseUrl != null && !L.baseUrl.trim().isEmpty()) {
         props.getLlm().setBaseUrl(L.baseUrl.trim());
       }
-      if (L.modelName != null && !L.modelName.isBlank()) {
+      if (L.modelName != null && !L.modelName.trim().isEmpty()) {
         props.getLlm().setModelName(L.modelName.trim());
       }
       if (L.temperature != null) {
         props.getLlm().setTemperature(L.temperature);
       }
       if (L.timeoutSeconds != null && L.timeoutSeconds > 0) {
-        props.getLlm().setTimeout(Duration.ofSeconds(L.timeoutSeconds));
+        props.getLlm().setTimeout(Duration.ofSeconds(L.timeoutSeconds.longValue()));
       }
     }
     if (root.logs != null) {
-      var G = root.logs;
-      if (G.defaultService != null && !G.defaultService.isBlank()) {
+      StoredLogs G = root.logs;
+      if (G.defaultService != null && !G.defaultService.trim().isEmpty()) {
         props.getLogs().setDefaultService(G.defaultService.trim());
       }
       if (G.services != null) {
@@ -94,7 +95,7 @@ public class Log4AiSettingsPersistence {
         } else {
           Map<String, LogAgentProperties.ServiceLogs> map = new LinkedHashMap<>();
           for (StoredServiceRow r : G.services) {
-            if (r.id == null || r.id.isBlank()) {
+            if (r.id == null || r.id.trim().isEmpty()) {
               continue;
             }
             String id = r.id.trim();
@@ -103,8 +104,8 @@ public class Log4AiSettingsPersistence {
               sl.setDisplayName(r.displayName);
             }
             String lp = effectiveLogPath(r);
-            if (lp != null && !lp.isBlank()) {
-              sl.setLogPath(Path.of(lp.trim()));
+            if (lp != null && !lp.trim().isEmpty()) {
+              sl.setLogPath(Paths.get(lp.trim()));
             }
             map.put(id, sl);
           }
@@ -116,10 +117,10 @@ public class Log4AiSettingsPersistence {
 
   /** 兼容旧版 settings.json：仅有 currentLogPath / historyDir 时取活动日志路径。 */
   private static String effectiveLogPath(StoredServiceRow r) {
-    if (r.logPath != null && !r.logPath.isBlank()) {
+    if (r.logPath != null && !r.logPath.trim().isEmpty()) {
       return r.logPath.trim();
     }
-    if (r.currentLogPath != null && !r.currentLogPath.isBlank()) {
+    if (r.currentLogPath != null && !r.currentLogPath.trim().isEmpty()) {
       return r.currentLogPath.trim();
     }
     return null;
@@ -133,13 +134,14 @@ public class Log4AiSettingsPersistence {
     s.llm.baseUrl = props.getLlm().getBaseUrl();
     s.llm.modelName = props.getLlm().getModelName();
     s.llm.temperature = props.getLlm().getTemperature();
-    long sec = props.getLlm().getTimeout() == null ? 120 : props.getLlm().getTimeout().toSeconds();
-    s.llm.timeoutSeconds = (int) Math.min(Integer.MAX_VALUE, Math.max(1, sec));
+    Duration timeout = props.getLlm().getTimeout();
+    long sec = timeout == null ? 120L : timeout.getSeconds();
+    s.llm.timeoutSeconds = (int) Math.min(Integer.MAX_VALUE, Math.max(1L, sec));
 
     s.logs = new StoredLogs();
     s.logs.defaultService = props.getLogs().getDefaultService();
     s.logs.services = new ArrayList<>();
-    for (var e : props.getLogs().getServices().entrySet()) {
+    for (Map.Entry<String, LogAgentProperties.ServiceLogs> e : props.getLogs().getServices().entrySet()) {
       StoredServiceRow row = new StoredServiceRow();
       row.id = e.getKey();
       row.displayName = e.getValue().getDisplayName();

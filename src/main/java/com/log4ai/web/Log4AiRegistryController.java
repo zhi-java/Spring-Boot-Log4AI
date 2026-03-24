@@ -75,17 +75,17 @@ public class Log4AiRegistryController {
 
   private void assertRegistryToken(String token) {
     String expected = props.getRegistry().getSharedSecret();
-    if (expected == null || expected.isBlank()) {
+    if (expected == null || expected.trim().isEmpty()) {
       throw new ResponseStatusException(
           HttpStatus.SERVICE_UNAVAILABLE, "log4ai.registry.shared-secret 未配置，拒绝注册");
     }
-    if (token == null || token.isBlank() || !expected.equals(token)) {
+    if (token == null || token.trim().isEmpty() || !expected.equals(token)) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "注册令牌无效");
     }
   }
 
   private static String resolveToken(String authorization, String headerToken) {
-    if (headerToken != null && !headerToken.isBlank()) {
+    if (headerToken != null && !headerToken.trim().isEmpty()) {
       return headerToken.trim();
     }
     if (authorization != null && authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {

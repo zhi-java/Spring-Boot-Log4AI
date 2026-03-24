@@ -2,6 +2,8 @@ package com.log4ai.support;
 
 import com.log4ai.config.LogAgentProperties;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -10,10 +12,26 @@ import java.util.regex.Pattern;
  */
 public final class LogContentSanitizer {
 
-  private record Rule(Pattern pattern, String replacement) {}
+  private static final class Rule {
+    private final Pattern pattern;
+    private final String replacement;
+
+    private Rule(Pattern pattern, String replacement) {
+      this.pattern = pattern;
+      this.replacement = replacement;
+    }
+
+    private Pattern pattern() {
+      return pattern;
+    }
+
+    private String replacement() {
+      return replacement;
+    }
+  }
 
   private static final List<Rule> DEFAULT =
-      List.of(
+      Arrays.asList(
           new Rule(
               Pattern.compile("(?i)authorization\\s*:\\s*bearer\\s+[^\\s]+"),
               "Authorization: Bearer ***"),
@@ -40,11 +58,11 @@ public final class LogContentSanitizer {
     this.enabled = props.getSanitize().isEnabled();
     List<Rule> list = new ArrayList<>(DEFAULT);
     for (LogAgentProperties.PatternReplace pr : props.getSanitize().getExtraPatterns()) {
-      if (pr.getRegex() != null && !pr.getRegex().isBlank()) {
+      if (pr.getRegex() != null && !pr.getRegex().trim().isEmpty()) {
         list.add(new Rule(Pattern.compile(pr.getRegex(), Pattern.CASE_INSENSITIVE), "***"));
       }
     }
-    this.rules = List.copyOf(list);
+    this.rules = Collections.unmodifiableList(new ArrayList<>(list));
   }
 
   public String line(String raw, int maxLineLength) {

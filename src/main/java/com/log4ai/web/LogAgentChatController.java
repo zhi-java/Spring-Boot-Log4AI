@@ -4,8 +4,8 @@ import com.log4ai.config.LogAgentProperties;
 import com.log4ai.service.LogAnalyzerAgent;
 import com.log4ai.web.dto.LogAgentChatDtos.ChatRequest;
 import com.log4ai.web.dto.LogAgentChatDtos.ChatResponse;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
@@ -51,10 +51,13 @@ public class LogAgentChatController {
   public ChatResponse chat(
       @RequestBody ChatRequest body,
       @RequestHeader(value = "X-Log4AI-Session", required = false) String headerSession) {
-    if (body == null || body.message() == null || body.message().isBlank()) {
+    if (body == null || body.message() == null || body.message().trim().isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message 不能为空");
     }
-    String sid = headerSession != null && !headerSession.isBlank() ? headerSession : body.sessionId();
+    String sid =
+        headerSession != null && !headerSession.trim().isEmpty()
+            ? headerSession
+            : body.sessionId();
     return new ChatResponse(agent.ask(sid, body.message()));
   }
 }

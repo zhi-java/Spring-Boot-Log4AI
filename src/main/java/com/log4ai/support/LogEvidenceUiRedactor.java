@@ -1,5 +1,6 @@
 package com.log4ai.support;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -19,7 +20,7 @@ public final class LogEvidenceUiRedactor {
       Pattern.compile("(?i)\\blogs[/\\\\][A-Za-z0-9._/-]+\\.(?:log|txt|gz)(?:\\.\\d+)?\\b");
   private static final Pattern IPV4 = Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b");
   /** 「错误：文件不存在」等行内路径删去，保留短语义 */
-  private static final Pattern PATH_SUFFIX_AFTER_msg =
+  private static final Pattern PATH_SUFFIX_AFTER_MSG =
       Pattern.compile(
           "(错误：)?(文件不存在|找不到日志文件|历史目录不存在|日历目录不存在)\\s*:\\s*[^\\n]+");
 
@@ -36,7 +37,7 @@ public final class LogEvidenceUiRedactor {
       if (shouldDropLine(line)) {
         continue;
       }
-      String cleaned = stripSensitiveFragments(line.strip());
+      String cleaned = stripSensitiveFragments(line.trim());
       if (cleaned.isEmpty()) {
         continue;
       }
@@ -50,7 +51,7 @@ public final class LogEvidenceUiRedactor {
   }
 
   private static boolean shouldDropLine(String line) {
-    String t = line.strip();
+    String t = line.trim();
     if (t.isEmpty()) {
       return false;
     }
@@ -87,27 +88,24 @@ public final class LogEvidenceUiRedactor {
     if (t.startsWith("- 日历目录（唯一根目录，含子目录）:")) {
       return true;
     }
-    if (t.matches("- [^\\s]+\\.(?:log|gz|txt)(?:\\.\\d+)?")) {
-      return true;
-    }
-    return false;
+    return t.matches("- [^\\s]+\\.(?:log|gz|txt)(?:\\.\\d+)?");
   }
 
   private static String stripSensitiveFragments(String line) {
     if (line.isEmpty()) {
       return "";
     }
-    String s =
-        PATH_SUFFIX_AFTER_msg
-            .matcher(line)
-            .replaceAll(
-                mr ->
-                    (mr.group(1) != null ? "错误：" + mr.group(2) : mr.group(2)));
+    String s = line;
+    Matcher matcher = PATH_SUFFIX_AFTER_MSG.matcher(s);
+    if (matcher.find()) {
+      String replacement = matcher.group(1) != null ? "错误：" + matcher.group(2) : matcher.group(2);
+      s = matcher.replaceAll(Matcher.quoteReplacement(replacement));
+    }
     s = WIN_PATH.matcher(s).replaceAll("");
     s = UNIX_ABS_PATH.matcher(s).replaceAll("");
     s = REL_LOG_PATH.matcher(s).replaceAll("");
     s = IPV4.matcher(s).replaceAll("");
-    s = s.replaceAll("[ \t]{2,}", " ").strip();
+    s = s.replaceAll("[ \t]{2,}", " ").trim();
     return s;
   }
 }
